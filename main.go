@@ -41,8 +41,8 @@ func main() {
 	kingpin.Parse()
 	logger := promlog.New(promlogConfig)
 
-	level.Info(logger).Log("msg", "Starting libvirt_exporter", "version", version.Info())
-	level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
+	_ = level.Info(logger).Log("msg", "Starting libvirt_exporter", "version", version.Info())
+	_ = level.Info(logger).Log("msg", "Build context", "build_context", version.BuildContext())
 
 	exporter, err := exporter.NewLibvirtExporter(*libvirtURI, libvirt.ConnectURI(*driver), logger)
 	if err != nil {
@@ -65,7 +65,7 @@ func main() {
 		}
 		landingPage, err := web.NewLandingPage(landingCnf)
 		if err != nil {
-			level.Error(logger).Log("err", err)
+			_ = level.Error(logger).Log("err", err)
 			os.Exit(1)
 		}
 		http.Handle("/", landingPage)
@@ -73,7 +73,7 @@ func main() {
 
 	srv := &http.Server{}
 	if err = web.ListenAndServe(srv, toolkitFlags, logger); err != nil {
-		level.Error(logger).Log("err", err)
+		_ = level.Error(logger).Log("err", err)
 		os.Exit(1)
 	}
 }
