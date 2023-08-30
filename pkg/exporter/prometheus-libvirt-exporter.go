@@ -105,12 +105,12 @@ var (
 		[]string{"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "host", "source_file", "target_device"},
 		nil)
 	libvirtDomainBlockWrTimeDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_block_stats", "write_time_total"),
+		prometheus.BuildFQName(namespace, "domain_block_stats", "write_time_total"),
 		"Total duration of write requests from a block device. (ns)",
 		[]string{"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "host", "source_file", "target_device"},
 		nil)
 	libvirtDomainBlockRdTimeDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_block_stats", "read_time_total"),
+		prometheus.BuildFQName(namespace, "domain_block_stats", "read_time_total"),
 		"Total duration of read requests from a block device. (ns)",
 		[]string{"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "host", "source_file", "target_device"},
 		nil)
