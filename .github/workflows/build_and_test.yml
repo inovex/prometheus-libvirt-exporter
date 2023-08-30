@@ -1,9 +1,6 @@
 name: Build, Test and Release Binaries
-
 on:
   push:
-    branches:
-      - master
 
 jobs:
   build:
@@ -23,6 +20,22 @@ jobs:
 
       - name: Run Tests
         run: go test ./...
+  release:
+    if: startsWith(github.event.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+
+      - name: Setup Go
+        uses: actions/setup-go@v3
+        with:
+          go-version: 1.21
+
+      - name: Extract EXPORTER_VERSION
+        id: extract_exporter_version
+        run: echo "::set-output name=version::$(cat VERSION)"
 
       - name: Run Goreleaser
         if: ${{ github.event_name != 'pull_request' }}

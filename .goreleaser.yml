@@ -18,6 +18,7 @@ builds:
       - linux
     goarch:
       - amd64
+      - arm64
 
 #Configuration for building packages for apk, deb and rpm package managers
 nfpms:
@@ -43,3 +44,19 @@ nfpms:
 
       - src: debian/prometheus-libvirt-exporter.upstart
         dst: /etc/init/prometheus-libvirt-exporter.conf
+
+archives:
+  - name_template: "{{ .ProjectName }}_{{ .Env.EXPORTER_VERSION }}_{{ .Os }}_{{ .Arch }}"
+    format: tar.gz
+
+checksum:
+  name_template: "{{ .ProjectName }}-{{ .Env.EXPORTER_VERSION }}_checksums.txt"
+  algorithm: sha256
+
+# Configuration for GitHub Releases
+release:
+  github:
+    owner: Knalltuete5000
+    name: prometheus-libvirt-exporter
+  draft: true
+  replace_existing_draft: true
