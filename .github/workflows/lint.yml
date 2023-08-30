@@ -1,6 +1,9 @@
 name: Lint Go Code
 on:
   pull_request:
+  push:
+    branches:
+      - master
 
 jobs:
   lint:
