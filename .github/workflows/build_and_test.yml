@@ -40,6 +40,7 @@ jobs:
       - name: Run Goreleaser
         if: ${{ github.event_name != 'pull_request' }}
         env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           EXPORTER_VERSION: ${{ steps.extract_exporter_version.outputs.version }}
         uses: goreleaser/goreleaser-action@v3
         with:
