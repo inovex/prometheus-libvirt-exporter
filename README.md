@@ -1,59 +1,54 @@
-# prometheus-libvirt-exporter
-prometheus-libvirt-exporter for host and vm metrics exposed for prometheus, written in Go with pluggable metric collectors.
-By default, this exporter listens on TCP port 9000,Path '/metrics',to expose metrics.vm's tags contain userId,userName,ProjectId,ProjectName.
 
-[![Build Status](https://travis-ci.org/zhangjianweibj/prometheus-libvirt-exporter.svg?branch=master)](https://travis-ci.org/zhangjianweibj/prometheus-libvirt-exporter)
-[![codecov](https://codecov.io/gh/zhangjianweibj/prometheus-libvirt-exporter/branch/master/graph/badge.svg)](https://codecov.io/gh/zhangjianweibj/prometheus-libvirt-exporter)
+# Prometheus-libvirt-exporter
+[![Build and Test](https://github.com/inovex/prometheus-libvirt-exporter/actions/workflows/build_and_test.yml/badge.svg)](https://github.com/inovex/prometheus-libvirt-exporter/actions/workflows/build_and_test.yml)
+[![Lint Go Code](https://github.com/inovex/prometheus-libvirt-exporter/actions/workflows/lint.yml/badge.svg)](https://github.com/inovex/prometheus-libvirt-exporter/actions/workflows/lint.yml)
+
+A prometheus-[libvirt](https://libvirt.org/)-exporter for host and vm metrics exposed for prometheus, written in Go with pluggable metric collectors.
+By default, this exporter listens on TCP port 9000, Path '/metrics', to expose metrics.
+
 # Building and running
 
+This release provides a set of assets for the prometheus-libvirt-exporter. It includes installation packages for various platforms (apk, deb, rpm) and the the binaries. Additionally, source code archives in both zip and tar.gz formats are available for download.
+
 ## Requirements
-1. Gorelease: `go install github.com/goreleaser/goreleaser`
+1. Gorelease: `go install github.com/goreleaser/goreleaser@latest`
 
 2. Taskfile: `go install github.com/go-task/task/v3/cmd/task@latest`
 
-## use go dep(depressed)
-1. install go dep
-
-2. cp $GOPATH/bin/dep /usr/bin/
-
-3. dep ensure
-
-4. go build prometheus-libvirt-exporter.go
-
-5. ./prometheus-libvirt-exporter
-
-## Building
+## Local Building
 1. Run `task build`
 
 2. Afterwards all packages, binaries and archives are available in the `dist/` folder
 
 ## To see all available configuration flags:
 
-./prometheus-libvirt-exporter -h
+`./prometheus-libvirt-exporter -h`
 
 
 ## metrics
 Name | Label |Description
 ---------|---------|-------------
-up|"host"|scraping libvirt's metrics state
-domains_number|"host"|get number of domains
-domain_state_code|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "stateDesc", "host"|code of the domain state,include state description
-maximum_memory_bytes|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "host"|Maximum allowed memory of the domain, in bytes
-memory_usage_bytes|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "host"|Memory usage of the domain, in bytes
-virtual_cpus|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "host"|Number of virtual CPUs for the domain
-cpu_time_seconds_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "host"|Amount of CPU time used by the domain, in seconds
-read_bytes_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_file", "target_device", "host"|Number of bytes read from a block device, in bytes
-read_requests_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_file", "target_device", "host"|Number of read requests from a block device
-write_bytes_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_file", "target_device", "host"|Number of bytes written from a block device, in bytes
-write_requests_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_file", "target_device", "host"|Number of write requests from a block device
-receive_bytes_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_bridge", "target_device", "host"|Number of bytes received on a network interface, in bytes
-receive_packets_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_bridge", "target_device", "host"|Number of packets received on a network interface
-receive_errors_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_bridge", "target_device", "host"|Number of packet receive errors on a network interface
-receive_drops_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_bridge", "target_device", "host"|Number of packet receive drops on a network interface
-transmit_bytes_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_bridge", "target_device", "host"|Number of bytes transmitted on a network interface, in bytes
-transmit_packets_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_bridge", "target_device", "host"|Number of packets transmitted on a network interface
-transmit_errors_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_bridge", "target_device", "host"|Number of packet transmit errors on a network interface
-transmit_drops_total|"domain", "instanceName", "instanceId", "flavorName", "userName", "userId", "projectName", "projectId", "source_bridge", "target_device", "host"|Number of packet transmit drops on a network interface
+up||scraping libvirt's metrics state
+domains||get number of domains
+libvirt_domain_openstack_info | "domain", "instance_name", "instance_id", "flavor_name", "user_name", "user_id", "project_name", "project_id" | get the aggregated OpenStack metadata as label
+libvirt_domain_info | "domain", "os_type", "os_type_machine", "os_type_arch" | get the aggregated OpenStack metadata as label
+domain_state_code|"domain", "state_desc", "host"|code of the domain state,include state description
+maximum_memory_bytes|"domain", "host" | Maximum allowed memory of the domain, in bytes
+memory_usage_bytes|"domain", "host"|Memory usage of the domain, in bytes
+virtual_cpus|"domain", "host"|Number of virtual CPUs for the domain
+cpu_time_seconds_total|"domain", "host"|Amount of CPU time used by the domain, in seconds
+read_bytes_total|"domain", "source_file", "target_device", "host"|Number of bytes read from a block device, in bytes
+read_requests_total|"domain", "source_file", "target_device", "host"|Number of read requests from a block device
+write_bytes_total|"domain", "source_file", "target_device" | Number of bytes written from a block device, in bytes
+write_requests_total|"domain", "source_file", "target_device" | Number of write requests from a block device
+receive_bytes_total|"domain", "source_bridge", "target_device", | Number of bytes received on a network interface, in bytes
+receive_packets_total|"domain", "source_bridge", "target_device" | Number of packets received on a network interface
+receive_errors_total|"domain", "source_bridge", "target_device" | Number of packet receive errors on a network interface
+receive_drops_total|"domain", "source_bridge", "target_device" | Number of packet receive drops on a network interface
+transmit_bytes_total|"domain", "source_bridge", "target_device" | Number of bytes transmitted on a network interface, in bytes
+transmit_packets_total|"domain", "source_bridge", "target_device" | Number of packets transmitted on a network interface
+transmit_errors_total|"domain", "source_bridge", "target_device" | Number of packet transmit errors on a network interface
+transmit_drops_total|"domain", "source_bridge", "target_device" | Number of packet transmit drops on a network interface
 
 
 ## Example

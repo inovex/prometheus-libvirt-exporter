@@ -12,137 +12,152 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+const namespace = "libvirt"
+
 var (
 	libvirtUpDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "", "up"),
+		prometheus.BuildFQName(namespace, "", "up"),
 		"Whether scraping libvirt's metrics was successful.",
-		[]string{"host"},
+		nil,
 		nil)
 
 	libvirtDomainNumbers = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "", "domains_number"),
-		"Number of the domain",
-		[]string{"host"},
+		prometheus.BuildFQName(namespace, "", "domains"),
+		"Number of domains",
+		nil,
 		nil)
 
 	libvirtDomainState = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "", "domain_state_code"),
+		prometheus.BuildFQName(namespace, "", "domain_state_code"),
 		"Code of the domain state",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "stateDesc"},
+		[]string{"domain", "state_desc"},
 		nil)
 
 	libvirtDomainInfoMaxMemDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_info", "maximum_memory_bytes"),
+		prometheus.BuildFQName(namespace, "domain_info", "maximum_memory_bytes"),
 		"Maximum allowed memory of the domain, in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host"},
+		[]string{"domain"},
 		nil)
 	libvirtDomainInfoMemoryDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_info", "memory_usage_bytes"),
+		prometheus.BuildFQName(namespace, "domain_info", "memory_usage_bytes"),
 		"Memory usage of the domain, in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host"},
+		[]string{"domain"},
 		nil)
 	libvirtDomainStatMemorySwapInBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_stat", "memory_swap_in_bytes"),
+		prometheus.BuildFQName(namespace, "domain_stat", "memory_swap_in_bytes"),
 		"Memory swap in of domain(the total amount of data read from swap space), in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host"},
+		[]string{"domain"},
 		nil)
 	libvirtDomainStatMemorySwapOutBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_stat", "memory_swap_out_bytes"),
+		prometheus.BuildFQName(namespace, "domain_stat", "memory_swap_out_bytes"),
 		"Memory swap out of the domain(the total amount of memory written out to swap space), in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host"},
+		[]string{"domain"},
 		nil)
 	libvirtDomainStatMemoryUnusedBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_stat", "memory_unused_bytes"),
+		prometheus.BuildFQName(namespace, "domain_stat", "memory_unused_bytes"),
 		"Memory unused of the domain, in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host"},
+		[]string{"domain"},
 		nil)
 	libvirtDomainStatMemoryAvailableInBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_stat", "memory_available_bytes"),
+		prometheus.BuildFQName(namespace, "domain_stat", "memory_available_bytes"),
 		"Memory available of the domain, in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host"},
+		[]string{"domain"},
 		nil)
 	libvirtDomainStatMemoryUsableBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_stat", "memory_usable_bytes"),
+		prometheus.BuildFQName(namespace, "domain_stat", "memory_usable_bytes"),
 		"Memory usable of the domain(corresponds to 'Available' in /proc/meminfo), in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host"},
+		[]string{"domain"},
 		nil)
 	libvirtDomainStatMemoryRssBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_stat", "memory_rss_bytes"),
+		prometheus.BuildFQName(namespace, "domain_stat", "memory_rss_bytes"),
 		"Resident Set Size of the process running the domain, in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host"},
+		[]string{"domain"},
 		nil)
 	libvirtDomainInfoNrVirtCpuDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_info", "virtual_cpus"),
+		prometheus.BuildFQName(namespace, "domain_info", "virtual_cpus"),
 		"Number of virtual CPUs for the domain.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host"},
+		[]string{"domain"},
 		nil)
 	libvirtDomainInfoCpuTimeDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_info", "cpu_time_seconds_total"),
+		prometheus.BuildFQName(namespace, "domain_info", "cpu_time_seconds_total"),
 		"Amount of CPU time used by the domain, in seconds.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host"},
+		[]string{"domain"},
 		nil)
 
 	libvirtDomainBlockRdBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_block_stats", "read_bytes_total"),
+		prometheus.BuildFQName(namespace, "domain_block_stats", "read_bytes_total"),
 		"Number of bytes read from a block device, in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_file", "target_device"},
+		[]string{"domain", "source_file", "target_device"},
 		nil)
 	libvirtDomainBlockRdReqDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_block_stats", "read_requests_total"),
+		prometheus.BuildFQName(namespace, "domain_block_stats", "read_requests_total"),
 		"Number of read requests from a block device.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_file", "target_device"},
+		[]string{"domain", "source_file", "target_device"},
 		nil)
 	libvirtDomainBlockWrBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_block_stats", "write_bytes_total"),
+		prometheus.BuildFQName(namespace, "domain_block_stats", "write_bytes_total"),
 		"Number of bytes written from a block device, in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_file", "target_device"},
+		[]string{"domain", "source_file", "target_device"},
 		nil)
 	libvirtDomainBlockWrReqDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_block_stats", "write_requests_total"),
+		prometheus.BuildFQName(namespace, "domain_block_stats", "write_requests_total"),
 		"Number of write requests from a block device.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_file", "target_device"},
+		[]string{"domain", "source_file", "target_device"},
 		nil)
 
 	//DomainInterface
 	libvirtDomainInterfaceRxBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_interface_stats", "receive_bytes_total"),
+		prometheus.BuildFQName(namespace, "domain_interface_stats", "receive_bytes_total"),
 		"Number of bytes received on a network interface, in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_bridge", "target_device"},
+		[]string{"domain", "source_bridge", "target_device"},
 		nil)
 	libvirtDomainInterfaceRxPacketsDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_interface_stats", "receive_packets_total"),
+		prometheus.BuildFQName(namespace, "domain_interface_stats", "receive_packets_total"),
 		"Number of packets received on a network interface.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_bridge", "target_device"},
+		[]string{"domain", "source_bridge", "target_device"},
 		nil)
 	libvirtDomainInterfaceRxErrsDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_interface_stats", "receive_errors_total"),
+		prometheus.BuildFQName(namespace, "domain_interface_stats", "receive_errors_total"),
 		"Number of packet receive errors on a network interface.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_bridge", "target_device"},
+		[]string{"domain", "source_bridge", "target_device"},
 		nil)
 	libvirtDomainInterfaceRxDropDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_interface_stats", "receive_drops_total"),
+		prometheus.BuildFQName(namespace, "domain_interface_stats", "receive_drops_total"),
 		"Number of packet receive drops on a network interface.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_bridge", "target_device"},
+		[]string{"domain", "source_bridge", "target_device"},
 		nil)
 	libvirtDomainInterfaceTxBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_interface_stats", "transmit_bytes_total"),
+		prometheus.BuildFQName(namespace, "domain_interface_stats", "transmit_bytes_total"),
 		"Number of bytes transmitted on a network interface, in bytes.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_bridge", "target_device"},
+		[]string{"domain", "source_bridge", "target_device"},
 		nil)
 	libvirtDomainInterfaceTxPacketsDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_interface_stats", "transmit_packets_total"),
+		prometheus.BuildFQName(namespace, "domain_interface_stats", "transmit_packets_total"),
 		"Number of packets transmitted on a network interface.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_bridge", "target_device"},
+		[]string{"domain", "source_bridge", "target_device"},
 		nil)
 	libvirtDomainInterfaceTxErrsDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_interface_stats", "transmit_errors_total"),
+		prometheus.BuildFQName(namespace, "domain_interface_stats", "transmit_errors_total"),
 		"Number of packet transmit errors on a network interface.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_bridge", "target_device"},
+		[]string{"domain", "source_bridge", "target_device"},
 		nil)
 	libvirtDomainInterfaceTxDropDesc = prometheus.NewDesc(
-		prometheus.BuildFQName("libvirt", "domain_interface_stats", "transmit_drops_total"),
+		prometheus.BuildFQName(namespace, "domain_interface_stats", "transmit_drops_total"),
 		"Number of packet transmit drops on a network interface.",
-		[]string{"domain", "instanceName", "instanceId", "flavorName", "arch", "machine", "userName", "userId", "projectName", "projectId", "host", "source_bridge", "target_device"},
+		[]string{"domain", "source_bridge", "target_device"},
+		nil)
+
+	// info metrics
+	libvirtOpenstackDomainInfoDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "openstack", "domain_info"),
+		"Metadata labels for the domain.",
+		[]string{"domain", "instance_name", "instance_id", "flavor_name", "user_name", "user_id", "project_name", "project_id"},
+		nil)
+
+	libvirtDomainInfoDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "domain_info"),
+		"OpenStack Metadata labels for the domain.",
+		[]string{"domain", "os_type", "os_type_arch", "os_type_machine"},
 		nil)
 
 	domainState = map[libvirt_schema.DomainState]string{
@@ -161,12 +176,13 @@ var (
 type collectFunc func(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger log.Logger) (err error)
 
 type domainMeta struct {
-	domainName   string
-	instanceName string
-	instanceId   string
-	flavorName   string
-	arch         string
-	machine      string
+	domainName      string
+	instanceName    string
+	instanceId      string
+	flavorName      string
+	os_type_arch    string
+	os_type_machine string
+	os_type         string
 
 	userName string
 	userId   string
@@ -223,8 +239,9 @@ func DomainsFromLibvirt(l *libvirt.Libvirt, logger log.Logger) ([]domainMeta, er
 		lvDomains[idx].instanceName = libvirtSchema.Metadata.NovaInstance.Name
 		lvDomains[idx].instanceId = libvirtSchema.UUID
 		lvDomains[idx].flavorName = libvirtSchema.Metadata.NovaInstance.Flavor.FlavorName
-		lvDomains[idx].arch = libvirtSchema.OpenStackMetadata.Type.Arch
-		lvDomains[idx].machine = libvirtSchema.OpenStackMetadata.Type.Machine
+		lvDomains[idx].os_type_arch = libvirtSchema.OSMetadata.Type.Arch
+		lvDomains[idx].os_type_machine = libvirtSchema.OSMetadata.Type.Machine
+		lvDomains[idx].os_type = libvirtSchema.OSMetadata.Type.Value
 
 		lvDomains[idx].userName = libvirtSchema.Metadata.NovaInstance.Owner.User.UserName
 		lvDomains[idx].userId = libvirtSchema.Metadata.NovaInstance.Owner.User.UserId
@@ -266,17 +283,10 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 		}
 	}()
 
-	var host string
-	if host, err = l.ConnectGetHostname(); err != nil {
-		_ = level.Error(logger).Log("err", "failed to get hostname")
-		return err
-	}
-
 	ch <- prometheus.MustNewConstMetric(
 		libvirtUpDesc,
 		prometheus.GaugeValue,
-		1.0,
-		host)
+		1.0)
 
 	domains, err := DomainsFromLibvirt(l, logger)
 
@@ -284,8 +294,7 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 	ch <- prometheus.MustNewConstMetric(
 		libvirtDomainNumbers,
 		prometheus.GaugeValue,
-		float64(domainNumber),
-		host)
+		float64(domainNumber))
 
 	for _, domain := range domains {
 		if err = CollectDomain(ch, l, domain, logger); err != nil {
@@ -298,11 +307,6 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 
 // CollectDomain extracts Prometheus metrics from a libvirt domain.
 func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, logger log.Logger) (err error) {
-	var host string
-	if host, err = l.ConnectGetHostname(); err != nil {
-		_ = level.Error(logger).Log("err", "failed to get hostname")
-		return err
-	}
 
 	var rState uint8
 	var rvirCpu uint16
@@ -312,18 +316,26 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 		return err
 	}
 
-	promLabels := []string{
+	promLabels := []string{}
+
+	openstackInfoLabels := []string{
 		domain.domainName,
 		domain.instanceName,
 		domain.instanceId,
 		domain.flavorName,
-		domain.arch,
-		domain.machine,
 		domain.userName,
 		domain.userId,
 		domain.projectName,
 		domain.projectId,
-		host}
+	}
+	infoLabels := []string{
+		domain.os_type,
+		domain.os_type_arch,
+		domain.os_type_machine,
+	}
+
+	ch <- prometheus.MustNewConstMetric(libvirtDomainInfoDesc, prometheus.GaugeValue, 1.0, infoLabels...)
+	ch <- prometheus.MustNewConstMetric(libvirtOpenstackDomainInfoDesc, prometheus.GaugeValue, 1.0, openstackInfoLabels...)
 
 	ch <- prometheus.MustNewConstMetric(libvirtDomainState, prometheus.GaugeValue, float64(rState), append(promLabels, domainState[libvirt_schema.DomainState(rState)])...)
 
@@ -511,6 +523,9 @@ func CollectDomainDomainStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt
 func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- libvirtUpDesc
 	ch <- libvirtDomainNumbers
+
+	ch <- libvirtDomainInfoDesc
+	ch <- libvirtOpenstackDomainInfoDesc
 
 	//domain info
 	ch <- libvirtDomainState
