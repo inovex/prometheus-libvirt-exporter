@@ -4,7 +4,11 @@
 [![Lint Go Code](https://github.com/inovex/prometheus-libvirt-exporter/actions/workflows/lint.yml/badge.svg)](https://github.com/inovex/prometheus-libvirt-exporter/actions/workflows/lint.yml)
 
 A prometheus-[libvirt](https://libvirt.org/)-exporter for host and vm metrics exposed for prometheus, written in Go with pluggable metric collectors.
-By default, this exporter listens on TCP port 9000, Path '/metrics', to expose metrics.
+By default, this exporter listens on TCP port 9177, path '/metrics', to expose metrics.
+
+This exporter is built upon the [go-libvirt](https://github.com/digitalocean/go-libvirt) package developed by DigitalOcean. It offers a pure Go interface for interacting with Libvirt, leveraging the RPC interface provided by Libvirt. For detailed information about the Go bindings used, you can refer to the [Libvirt API reference](https://libvirt.org/html/index.html).
+
+
 
 # Building and running
 
@@ -30,7 +34,7 @@ Name | Label |Description
 ---------|---------|-------------
 up||scraping libvirt's metrics state
 domains||get number of domains
-libvirt_domain_openstack_info | "domain", "instance_name", "instance_id", "flavor_name", "user_name", "user_id", "project_name", "project_id" | get the aggregated OpenStack metadata as label
+libvirt_openstack_domain_info | "domain", "instance_name", "instance_id", "flavor_name", "user_name", "user_id", "project_name", "project_id" | get the aggregated OpenStack metadata as label
 libvirt_domain_info | "domain", "os_type", "os_type_machine", "os_type_arch" | get the aggregated OpenStack metadata as label
 domain_state_code|"domain", "state_desc", "host"|code of the domain state,include state description
 maximum_memory_bytes|"domain", "host" | Maximum allowed memory of the domain, in bytes
