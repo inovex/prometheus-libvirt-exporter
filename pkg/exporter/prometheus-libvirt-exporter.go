@@ -666,21 +666,21 @@ func CollectDomainVCPUInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, doma
 					ch <- prometheus.MustNewConstMetric(
 						libvirtDomainVCPUStatsTime,
 						prometheus.CounterValue,
-						float64(metric_value),
+						float64(metric_value)/1e9,
 						promVCPULabels...)
 				case "wait":
 					metric_value := param.Value.I.(uint64)
 					ch <- prometheus.MustNewConstMetric(
 						libvirtDomainVCPUStatsWait,
 						prometheus.CounterValue,
-						float64(metric_value),
+						float64(metric_value)/1e9,
 						promVCPULabels...)
 				case "delay":
 					metric_value := param.Value.I.(uint64)
 					ch <- prometheus.MustNewConstMetric(
 						libvirtDomainVCPUStatsDelay,
 						prometheus.CounterValue,
-						float64(metric_value),
+						float64(metric_value)/1e9,
 						promVCPULabels...)
 				}
 			}
