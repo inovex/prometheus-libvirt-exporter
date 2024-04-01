@@ -39,12 +39,43 @@ dockers:
   - ids:
       - prometheus-libvirt-exporter
     image_templates:
-      - ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}
+      - ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-amd64
     goos: linux
     goarch: amd64
     dockerfile: goreleaser.dockerfile
     build_flag_templates:
       - "--build-arg=BINARY_NAME={{ .ProjectName }}"
+      - "--platform=linux/amd64"
+    use: buildx
+  - ids:
+      - prometheus-libvirt-exporter
+    image_templates:
+      - ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-arm64
+    goos: linux
+    goarch: arm64
+    dockerfile: goreleaser.dockerfile
+    build_flag_templates:
+      - "--build-arg=BINARY_NAME={{ .ProjectName }}"
+      - "--platform=linux/arm64"
+    use: buildx
+  - ids:
+      - prometheus-libvirt-exporter
+    image_templates:
+      - ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-riscv64
+    goos: linux
+    goarch: riscv64
+    dockerfile: goreleaser.dockerfile
+    build_flag_templates:
+      - "--build-arg=BINARY_NAME={{ .ProjectName }}"
+      - "--platform=linux/riscv64"
+    use: buildx
+
+docker_manifests:
+- name_template: 'ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}'
+  image_templates:
+  - 'ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-amd64'
+  - 'ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-arm64'
+  - 'ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-riscv64'
 
 #Configuration for building packages for apk, deb and rpm package managers
 nfpms:
@@ -83,6 +114,9 @@ release:
     name: prometheus-libvirt-exporter
   footer: |
     ## Docker Images
-    - ghrc.io/inovex/prometheus-libvirt-exporter:{{ trimprefix .Tag "v" }}
+    - ghcr.io/inovex/prometheus-libvirt-exporter:{{ trimprefix .Tag "v" }} (universal, multi-platform)
+    - ghcr.io/inovex/prometheus-libvirt-exporter:{{ trimprefix .Tag "v" }}-amd64
+    - ghcr.io/inovex/prometheus-libvirt-exporter:{{ trimprefix .Tag "v" }}-arm64
+    - ghcr.io/inovex/prometheus-libvirt-exporter:{{ trimprefix .Tag "v" }}-riscv64
   #draft: true
   replace_existing_draft: true
