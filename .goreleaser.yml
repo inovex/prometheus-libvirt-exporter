@@ -118,5 +118,5 @@ release:
     - ghcr.io/inovex/prometheus-libvirt-exporter:{{ trimprefix .Tag "v" }}-amd64
     - ghcr.io/inovex/prometheus-libvirt-exporter:{{ trimprefix .Tag "v" }}-arm64
     - ghcr.io/inovex/prometheus-libvirt-exporter:{{ trimprefix .Tag "v" }}-riscv64
-  #draft: true
+  prerelease: auto
   replace_existing_draft: true

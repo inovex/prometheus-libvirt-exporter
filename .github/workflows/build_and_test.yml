@@ -19,6 +19,7 @@ jobs:
 
       - name: Run Tests
         run: go test ./...
+
   release:
     if: startsWith(github.event.ref, 'refs/tags/v')
     needs: build
