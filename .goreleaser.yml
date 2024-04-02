@@ -17,12 +17,23 @@ builds:
       - -w -s
       - -X main.version={{ .Version }} -X main.commit={{ .Commit }}
     goos:
+      - darwin
+      - freebsd
       - linux
     goarch:
       - amd64
       - arm
       - arm64
       - riscv64
+    goarm:
+      - "5"
+      - "6"
+      - "7"
+    ignore:
+      - goos: darwin
+        goarch: arm
+      - goos: darwin
+        goarch: riscv64
 
 dockers:
   - ids:
@@ -34,11 +45,12 @@ dockers:
     dockerfile: goreleaser.dockerfile
     build_flag_templates:
       - "--build-arg=BINARY_NAME={{ .ProjectName }}"
+
 #Configuration for building packages for apk, deb and rpm package managers
 nfpms:
   - id: "prometheus-libvirt-exporter"
     package_name: "prometheus-libvirt-exporter"
-    file_name_template: prometheus-libvirt-exporter-{{ .Version }}.{{ if eq .Arch "amd64" }}x86_64{{ else }}{{ .Arch }}{{ end -}}
+    file_name_template: prometheus-libvirt-exporter-{{ .Version }}.{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}
     builds:
       - prometheus-libvirt-exporter
     maintainer: "inovex"
@@ -47,20 +59,16 @@ nfpms:
     homepage: "https://github.com/inovex/prometheus-libvirt-exporter"
     license: "MIT License"
     formats:
-      - apk
       - deb
       - rpm
     bindir: "/usr/bin"
     priority: optional
     contents:
-      - src: debian/prometheus-libvirt-exporter.service
+      - src: contrib/prometheus-libvirt-exporter.service
         dst: /etc/systemd/system/prometheus-libvirt-exporter.service
 
-      - src: debian/prometheus-libvirt-exporter.upstart
-        dst: /etc/init/prometheus-libvirt-exporter.conf
-
 archives:
-  - name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+  - name_template: "{{ .ProjectName }}-{{ .Version }}.{{ .Os }}-{{ .Arch }}{{ with .Arm }}v{{ . }}{{ end }}"
     format: tar.gz
     wrap_in_directory: true
 
@@ -76,6 +84,5 @@ release:
   footer: |
     ## Docker Images
     - ghrc.io/inovex/prometheus-libvirt-exporter:{{ trimprefix .Tag "v" }}
-    - ghrc.io/inovex/prometheus-libvirt-exporter:latest
   #draft: true
   replace_existing_draft: true
