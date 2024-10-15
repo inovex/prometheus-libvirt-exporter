@@ -61,6 +61,18 @@ libvirt_domain_interface_stats_transmit_bytes_total | "domain", "target_device" 
 libvirt_domain_interface_stats_transmit_packets_total | "domain", "target_device" | Number of packets transmitted on a network interface
 libvirt_domain_interface_stats_transmit_errors_total | "domain", "target_device" | Number of packet transmit errors on a network interface
 libvirt_domain_interface_stats_transmit_drops_total | "domain", "target_device" | Number of packet transmit drops on a network interface
+libvirt_domain_job_type | "domain" | Code of the domain job type
+libvirt_domain_job_time_elapsed_seconds | "domain" | Time elapsed since the start of the domain job
+libvirt_domain_job_time_remaining_seconds | "domain" | Time remaining until the end of the domain job
+libvirt_domain_job_data_total_bytes | "domain" | Data total of the domain job
+libvirt_domain_job_data_processed_bytes | "domain" | Data processed of the domain job
+libvirt_domain_job_data_remaining_bytes | "domain" | Data remaining of the domain job
+libvirt_domain_job_mem_total_bytes | "domain" | Memory total of the domain job
+libvirt_domain_job_mem_processed_bytes | "domain" | Memory processed of the domain job
+libvirt_domain_job_mem_remaining_bytes | "domain" | Memory remaining of the domain job
+libvirt_domain_job_file_total_bytes | "domain" | File total of the domain job
+libvirt_domain_job_file_processed_bytes | "domain" | File processed of the domain job
+libvirt_domain_job_file_remaining_bytes | "domain" | File remaining of the domain job
 libvirt_domain_vcpu_current | "domain" | Number of current online vCPUs
 libvirt_domain_vcpu_delay_seconds_total | "domain", "vcpu" | Time the vCPU spent waiting in the queue instead of running. Exposed to the VM as steal time
 libvirt_domain_vcpu_maximum | "domain" | Number of maximum online vCPUs

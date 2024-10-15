@@ -55,6 +55,68 @@ var (
 		[]string{"domain"},
 		nil)
 
+	//domain job info
+	libvirtDomainJobTypeDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "type"),
+		"Code of the domain job type",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobTimeElapsedDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "time_elapsed_seconds"),
+		"Time elapsed since the start of the domain job",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobTimeRemainingDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "time_remaining_seconds"),
+		"Time remaining until the end of the domain job",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobDataTotalDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "data_total_bytes"),
+		"Data total of the domain job",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobDataProcessedDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "data_processed_bytes"),
+		"Data processed of the domain job",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobDataRemainingDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "data_remaining_bytes"),
+		"Data remaining of the domain job",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobMemTotalDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "memory_total_bytes"),
+		"Memory total of the domain job",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobMemProcessedDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "memory_processed_bytes"),
+		"Memory processed of the domain job",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobMemRemainingDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "memory_remaining_bytes"),
+		"Memory remaining of the domain job",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobFileTotalDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "file_total_bytes"),
+		"File total of the domain job",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobFileProcessedDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "file_processed_bytes"),
+		"File processed of the domain job",
+		[]string{"domain"},
+		nil)
+	libvirtDomainJobFileRemainingDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_job_info", "file_remaining_bytes"),
+		"File remaining of the domain job",
+		[]string{"domain"},
+		nil)
+
 	//domain memory stats
 	libvirtDomainMemoryStatsSwapInBytesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_memory_stats", "swap_in_bytes"),
@@ -440,7 +502,7 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 		return nil
 	}
 
-	for _, collectFunc := range []collectFunc{CollectDomainBlockDeviceInfo, CollectDomainNetworkInfo, CollectDomainMemoryStatInfo, CollectDomainVCPUInfo} {
+	for _, collectFunc := range []collectFunc{CollectDomainBlockDeviceInfo, CollectDomainNetworkInfo, CollectDomainJobInfo, CollectDomainMemoryStatInfo, CollectDomainVCPUInfo} {
 		if err = collectFunc(ch, l, domain, promLabels, logger); err != nil {
 			_ = level.Warn(logger).Log("warn", "failed to collect some domain info", "domain", domain.libvirtDomain.Name, "msg", err)
 		}
@@ -565,6 +627,80 @@ func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, d
 			float64(1),
 			promInterfaceInfoLabels...)
 	}
+	return
+}
+
+func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger log.Logger) (err error) {
+	var rType int32
+	var rTimeElapsed, rTimeRemaining, rDataTotal, rDataProcessed, rDataRemaining, rMemTotal,
+		rMemProcessed, rMemRemaining, rFileTotal, rFileProcessed, rFileRemaining uint64
+
+	if rType, rTimeElapsed, rTimeRemaining, rDataTotal, rDataProcessed, rDataRemaining,
+		rMemTotal, rMemProcessed, rMemRemaining, rFileTotal, rFileProcessed, rFileRemaining, err = l.DomainGetJobInfo(domain.libvirtDomain); err != nil {
+		_ = level.Warn(logger).Log("warn", "failed to get job info", "domain", domain.libvirtDomain.Name, "msg", err)
+		return err
+	}
+
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobTypeDesc,
+		prometheus.GaugeValue,
+		float64(rType),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobTimeElapsedDesc,
+		prometheus.GaugeValue,
+		float64(rTimeElapsed),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobTimeRemainingDesc,
+		prometheus.GaugeValue,
+		float64(rTimeRemaining),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobDataTotalDesc,
+		prometheus.GaugeValue,
+		float64(rDataTotal),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobDataProcessedDesc,
+		prometheus.GaugeValue,
+		float64(rDataProcessed),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobDataRemainingDesc,
+		prometheus.GaugeValue,
+		float64(rDataRemaining),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobMemTotalDesc,
+		prometheus.GaugeValue,
+		float64(rMemTotal),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobMemProcessedDesc,
+		prometheus.GaugeValue,
+		float64(rMemProcessed),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobMemRemainingDesc,
+		prometheus.GaugeValue,
+		float64(rMemRemaining),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobFileTotalDesc,
+		prometheus.GaugeValue,
+		float64(rFileTotal),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobFileProcessedDesc,
+		prometheus.GaugeValue,
+		float64(rFileProcessed),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainJobFileRemainingDesc,
+		prometheus.GaugeValue,
+		float64(rFileRemaining),
+		promLabels...)
 	return
 }
 
@@ -756,6 +892,20 @@ func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- libvirtDomainInterfaceTxPacketsDesc
 	ch <- libvirtDomainInterfaceTxErrsDesc
 	ch <- libvirtDomainInterfaceTxDropDesc
+
+	//domain job
+	ch <- libvirtDomainJobTypeDesc
+	ch <- libvirtDomainJobTimeElapsedDesc
+	ch <- libvirtDomainJobTimeRemainingDesc
+	ch <- libvirtDomainJobDataTotalDesc
+	ch <- libvirtDomainJobDataProcessedDesc
+	ch <- libvirtDomainJobDataRemainingDesc
+	ch <- libvirtDomainJobMemTotalDesc
+	ch <- libvirtDomainJobMemProcessedDesc
+	ch <- libvirtDomainJobMemRemainingDesc
+	ch <- libvirtDomainJobFileTotalDesc
+	ch <- libvirtDomainJobFileProcessedDesc
+	ch <- libvirtDomainJobFileRemainingDesc
 
 	//domain mem stat
 	ch <- libvirtDomainMemoryStatsSwapInBytesDesc
