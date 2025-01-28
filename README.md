@@ -48,10 +48,19 @@ libvirt_domain_memory_stats_available_bytes | "domain" | Memory available to the
 libvirt_domain_memory_stats_usable_bytes | "domain" | Memory usable by the domain (corresponds to 'Available' in /proc/meminfo)
 libvirt_domain_memory_stats_rss_bytes |"domain" | Resident Set Size of the process running the domain
 libvirt_domain_block_stats_info | "domain", "disk_type", "driver_cache", "driver_discard", "driver_name", "driver_type", "serial", "source_file", "target_bus", "target_device" | Metadata information on block devices
+libvirt_domain_memory_stats_used_percent |"domain" | The amount of memory in percent, that used by domain
+libvirt_domain_memory_stats_actual_balloon_bytes |"domain" | Current balloon value (in bytes)
+libvirt_domain_memory_stats_major_fault_total |"domain" | Page faults occur when a process makes a valid access to virtual memory that is not available. When servicing the page fault, if disk IO is required, it is considered a major fault
+libvirt_domain_memory_stats_minor_fault_total |"domain" | Page faults occur when a process makes a valid access to virtual memory that is not available. When servicing the page not fault, if disk IO is required, it is considered a minor fault
 libvirt_domain_block_stats_read_bytes_total | "domain", "target_device", "host" | Number of bytes read from a block device, in bytes
 libvirt_domain_block_stats_read_requests_total | "domain", "target_device", "host" | Number of read requests from a block device
 libvirt_domain_block_stats_write_bytes_total | "domain", "target_device" | Number of bytes written from a block device, in bytes
 libvirt_domain_block_stats_write_requests_total | "domain", "target_device" | Number of write requests from a block device
+libvirt_domain_block_stats_read_time_seconds_total | "domain", "target_device" | Total time spent on reads from a block device, in seconds.
+libvirt_domain_block_stats_write_time_seconds_total | "domain", "target_device" | Total time spent on writes on a block device, in seconds
+libvirt_domain_block_stats_flush_requests_total | "domain", "target_device" | Total flush requests from a block device
+libvirt_domain_block_stats_flush_time_seconds_total | "domain", "target_device" | Total time in seconds spent on cache flushing to a block device
+libvirt_domain_block_stats_capacity_bytes | "domain", "target_device" | Logical size in bytes of the block device backing image
 libvirt_domain_interface_stats_info | "domain", "interface_type", "mac_address", "model_type", "mtu_size", "source_bridge", "target_device" | Metadata on network interfaces
 libvirt_domain_interface_stats_receive_bytes_total | "domain", "target_device", | Number of bytes received on a network interface, in bytes
 libvirt_domain_interface_stats_receive_packets_total | "domain", "target_device" | Number of packets received on a network interface
@@ -93,6 +102,11 @@ libvirt_domain_block_stats_read_bytes_total{domain="instance-0001e06e",target_de
 libvirt_domain_block_stats_read_requests_total{domain="instance-0001e06e",target_device="vda"} 23560
 libvirt_domain_block_stats_write_bytes_total{domain="instance-0001e06e",target_device="vda"} 7.6914481664e+10
 libvirt_domain_block_stats_write_requests_total{domain="instance-0001e06e",target_device="vda"} 2.409676e+06
+libvirt_domain_block_stats_read_time_seconds_total{domain="instance-00000337",target_device="sda"} 161803.085086353
+libvirt_domain_block_stats_write_time_seconds_total{domain="instance-00000337",target_device="sda"} 530522.437009019
+libvirt_domain_block_stats_capacity_bytes{domain="instance-00000337",target_device="sda"} 2.147483648e+10
+libvirt_domain_block_stats_flush_requests_total{domain="instance-00000337",target_device="sda"} 5.153142e+06
+libvirt_domain_block_stats_flush_time_seconds_total{domain="instance-00000337",target_device="sda"} 473.56850521
 libvirt_domain_info{domain="instance-0001e06e",os_type="hvm",os_type_arch="x86_64",os_type_machine="pc-q35-4.0"} 1
 libvirt_domain_info_cpu_time_seconds_total{domain="instance-0001e06e"} 136215.65
 libvirt_domain_info_maximum_memory_bytes{domain="instance-0001e06e"} 1.7179869184e+10
@@ -114,6 +128,10 @@ libvirt_domain_memory_stats_swap_in_bytes{domain="instance-0001e06e"} 0
 libvirt_domain_memory_stats_swap_out_bytes{domain="instance-0001e06e"} 0
 libvirt_domain_memory_stats_unused_bytes{domain="instance-0001e06e"} 1.3844406272e+10
 libvirt_domain_memory_stats_usable_bytes{domain="instance-0001e06e"} 1.4880370688e+10
+libvirt_domain_memory_stats_actual_balloon_bytes{domain="instance-00000337"} 8.589934592e+09
+libvirt_domain_memory_stats_major_fault_total{domain="instance-00000337"} 3.34448e+06
+libvirt_domain_memory_stats_minor_fault_total{domain="instance-00000337"} 5.6630255354e+10
+libvirt_domain_memory_stats_used_percent{domain="instance-00000337"} 72.84790881786736
 libvirt_domain_openstack_info{domain="instance-0001e06e",flavor_name="z1.4xlarge",instance_id="a12423b02-4a36-4530-bf25-acb8ba80b1b1",instance_name="openstackInstanceName",project_id="hghngfhbf45435352353623gvfegt352",project_name="openstackProjectName",user_id="",user_name="openstackUserName"} 1
 libvirt_domain_vcpu_current{domain="instance-00000131"} 2
 libvirt_domain_vcpu_delay_seconds_total{domain="instance-00000131",vcpu="0"} 6309719178
