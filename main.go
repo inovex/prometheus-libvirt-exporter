@@ -12,12 +12,16 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/prometheus/common/promslog"
 	"github.com/prometheus/common/promslog/flag"
-	"github.com/prometheus/common/version"
+	prometheus_version "github.com/prometheus/common/version"
 	"github.com/prometheus/exporter-toolkit/web"
 	webflag "github.com/prometheus/exporter-toolkit/web/kingpinflag"
 )
 
+var version string
+
 func main() {
+
+	prometheus_version.Version = version
 
 	var (
 		libvirtURI = kingpin.Flag("libvirt.uri",
@@ -35,13 +39,13 @@ func main() {
 
 	promlogConfig := &promslog.Config{}
 	flag.AddFlags(kingpin.CommandLine, promlogConfig)
-	kingpin.Version(version.Print("libvirt_exporter"))
+	kingpin.Version(prometheus_version.Print("libvirt_exporter"))
 	kingpin.HelpFlag.Short('h')
 	kingpin.Parse()
 	logger := promslog.New(promlogConfig)
 
-	logger.Info("Starting libvirt_exporter", "version", version.Info())
-	logger.Info("Build context", "build_context", version.BuildContext())
+	logger.Info("Starting libvirt_exporter", "version", prometheus_version.Info())
+	logger.Info("Build context", "build_context", prometheus_version.BuildContext())
 
 	exporter, err := exporter.NewLibvirtExporter(*libvirtURI, libvirt.ConnectURI(*driver), logger)
 	if err != nil {
@@ -54,7 +58,7 @@ func main() {
 		landingCnf := web.LandingConfig{
 			Name:        "Libvirt Exporter",
 			Description: "Prometheus Libvirt Exporter",
-			Version:     version.Info(),
+			Version:     prometheus_version.Info(),
 			Links: []web.LandingLinks{
 				{
 					Address: *metricsPath,
