@@ -1,6 +1,5 @@
 name: Build, Test and Release Binaries
-on:
-  push
+on: push
 permissions:
   contents: write
   packages: write
