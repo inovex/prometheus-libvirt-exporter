@@ -1,8 +1,8 @@
 version: "3"
 
 env:
-   EXPORTER_VERSION:
-     sh: cat VERSION
+  EXPORTER_VERSION:
+    sh: cat VERSION
 
 tasks:
   build:

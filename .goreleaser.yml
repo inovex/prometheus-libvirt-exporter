@@ -71,11 +71,11 @@ dockers:
     use: buildx
 
 docker_manifests:
-- name_template: 'ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}'
-  image_templates:
-  - 'ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-amd64'
-  - 'ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-arm64'
-  - 'ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-riscv64'
+  - name_template: "ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}"
+    image_templates:
+      - "ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-amd64"
+      - "ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-arm64"
+      - "ghcr.io/inovex/{{ .ProjectName }}:{{ .Version }}-riscv64"
 
 #Configuration for building packages for apk, deb and rpm package managers
 nfpms:
