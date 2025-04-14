@@ -2,6 +2,7 @@ package exporter
 
 import (
 	"encoding/xml"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -20,6 +21,12 @@ var (
 		prometheus.BuildFQName(namespace, "", "up"),
 		"Whether scraping libvirt's metrics was successful.",
 		nil,
+		nil)
+
+	libvirtDomainTimedOutDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain", "timed_out"),
+		"Whether scraping libvirt's domain metrics has timed out.",
+		[]string{"domain"},
 		nil)
 
 	libvirtDomainNumbers = prometheus.NewDesc(
@@ -323,6 +330,11 @@ var (
 		"Remaining free space of the storage pool in bytes.",
 		[]string{"storage_pool"},
 		nil)
+	libvirtPoolTimedOutDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "storage_pool", "timed_out"),
+		"Whether scraping libvirt's pool metrics has timed out.",
+		[]string{"storage_pool"},
+		nil)
 
 	// info metrics
 	libvirtDomainInfoDesc = prometheus.NewDesc(
@@ -351,9 +363,15 @@ var (
 	}
 
 	additionalBlockStatName = regexp.MustCompile(`block\.(\d+)\.(.+)`)
+	bdevNameRegex           = regexp.MustCompile(`block\.(\d+)\.name`)
+	bdevMetricsRegex        = regexp.MustCompile(`block\.(\d+)\..+`)
+	bdevMetricRegexTemplate = `block\.%s\.(.+)`
+	intNameRegex            = regexp.MustCompile(`net\.(\d+)\.name`)
+	intMetricsRegex         = regexp.MustCompile(`net\.(\d+)\.(rx|tx)\.(\w+)`)
+	intMetricRegexTemplate  = `net\.%s\.(.+)`
 )
 
-type collectFunc func(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger) (err error)
+type collectFunc func(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool)
 
 type domainMeta struct {
 	domainName      string
@@ -380,18 +398,27 @@ type LibvirtExporter struct {
 	driver libvirt.ConnectURI
 
 	logger *slog.Logger
+
+	timeout time.Duration
+}
+
+// DomainStatsRecord is a struct to hold the domain stats record.
+type DomainStatsRecord struct {
+	DomainStatsRecord []libvirt.DomainStatsRecord
+	err               error
 }
 
 // NewLibvirtExporter creates a new Prometheus exporter for libvirt.
-func NewLibvirtExporter(uri string, driver libvirt.ConnectURI, logger *slog.Logger) (*LibvirtExporter, error) {
+func NewLibvirtExporter(uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration) (*LibvirtExporter, error) {
 	return &LibvirtExporter{
-		uri:    uri,
-		driver: driver,
-		logger: logger,
+		uri:     uri,
+		driver:  driver,
+		logger:  logger,
+		timeout: timeout,
 	}, nil
 }
 
-// DomainFromLibvirt retrives all domains from the libvirt socket and enriches them with some meta information.
+// DomainsFromLibvirt retrives all domains from the libvirt socket and enriches them with some meta information.
 func DomainsFromLibvirt(l *libvirt.Libvirt, logger *slog.Logger) ([]domainMeta, error) {
 	domains, _, err := l.ConnectListAllDomains(1, 0)
 	if err != nil {
@@ -435,14 +462,14 @@ func DomainsFromLibvirt(l *libvirt.Libvirt, logger *slog.Logger) ([]domainMeta, 
 
 // Collect scrapes Prometheus metrics from libvirt.
 func (e *LibvirtExporter) Collect(ch chan<- prometheus.Metric) {
-	if err := CollectFromLibvirt(ch, e.uri, e.driver, e.logger); err != nil {
+	if err := CollectFromLibvirt(ch, e.uri, e.driver, e.logger, e.timeout); err != nil {
 		e.logger.Error("failed to collect metrics", "msg", err)
 	}
 }
 
 // CollectFromLibvirt obtains Prometheus metrics from all domains in a libvirt setup.
-func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.ConnectURI, logger *slog.Logger) (err error) {
-	dialer := dialers.NewLocal(dialers.WithSocket(uri), dialers.WithLocalTimeout((5 * time.Second)))
+func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration) (err error) {
+	dialer := dialers.NewLocal(dialers.WithSocket(uri), dialers.WithLocalTimeout(5*time.Second))
 	l := libvirt.NewWithDialer(dialer)
 	if err = l.ConnectToURI(driver); err != nil {
 		logger.Error("failed to connect", "msg", err)
@@ -475,10 +502,15 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 	// collect domain metrics from libvirt
 	// see https://libvirt.org/html/libvirt-libvirt-domain.html
 	for _, domain := range domains {
-		if err = CollectDomain(ch, l, domain, logger); err != nil {
+		if err, hasTimedOut := CollectDomain(ch, l, domain, logger, timeout); err != nil {
 			logger.Error("failed to collect domain", "domain", domain.domainName, "msg", err)
-			return err
+			if hasTimedOut {
+				ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(1), domain.domainName)
+				logger.Error("call to CollectDomain has timed out", "domain", domain.domainName)
+				continue
+			}
 		}
+		ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(0), domain.domainName)
 	}
 
 	// collect storage pool metrics
@@ -488,29 +520,56 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 		logger.Error("failed to collect storage pools", "msg", err)
 		return err
 	}
+
 	for _, pool := range pools {
-		if err = CollectStoragePoolInfo(ch, l, pool, logger); err != nil {
-			logger.Error("failed to collect storage pool info", "msg", err)
-			return err
+		if err, hasTimedOut := CollectStoragePoolInfo(ch, l, pool, logger, timeout); err != nil {
+			logger.Error("failed to collect storage pool info", "pool", pool.Name, "msg", err)
+			if hasTimedOut {
+				logger.Error("call to CollectStoragePoolInfo has timed out", "pool", pool.Name)
+				ch <- prometheus.MustNewConstMetric(libvirtPoolTimedOutDesc, prometheus.GaugeValue, float64(1), pool.Name)
+				continue
+			}
 		}
+		ch <- prometheus.MustNewConstMetric(libvirtPoolTimedOutDesc, prometheus.GaugeValue, float64(0), pool.Name)
 	}
 
 	return nil
 }
 
 // CollectDomain extracts Prometheus metrics from a libvirt domain.
-func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, logger *slog.Logger) (err error) {
-
-	var rState uint8
-	var rvirCpu uint16
-	var rmaxmem, rmemory, rcputime uint64
-	if rState, rmaxmem, rmemory, rvirCpu, rcputime, err = l.DomainGetInfo(domain.libvirtDomain); err != nil {
-		logger.Error("failed to get domainInfo", "domain", domain.libvirtDomain.Name, "msg", err)
-		return err
+func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
+	var (
+		rState                     uint8
+		rvirCpu                    uint16
+		rmaxmem, rmemory, rcputime uint64
+	)
+	type rDomainStatsState struct {
+		rState                     uint8
+		rvirCpu                    uint16
+		rmaxmem, rmemory, rcputime uint64
+		err                        error
 	}
 
-	promLabels := []string{
-		domain.domainName,
+	chDomainStats := make(chan rDomainStatsState, 1)
+	go func() {
+		var data rDomainStatsState
+		data.rState, data.rmaxmem, data.rmemory, data.rvirCpu, data.rcputime, data.err = l.DomainGetInfo(domain.libvirtDomain)
+		chDomainStats <- data
+	}()
+
+	select {
+	case res := <-chDomainStats:
+		if res.err != nil {
+			return res.err, false
+		}
+
+		rState = res.rState
+		rvirCpu = res.rvirCpu
+		rmaxmem = res.rmaxmem
+		rmemory = res.rmemory
+		rcputime = res.rcputime
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return fmt.Errorf("call to DomainGetInfo has timed out"), true
 	}
 
 	openstackInfoLabels := []string{
@@ -531,6 +590,10 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 		domain.os_type_machine,
 	}
 
+	promLabels := []string{
+		domain.domainName,
+	}
+
 	ch <- prometheus.MustNewConstMetric(libvirtDomainInfoDesc, prometheus.GaugeValue, 1.0, infoLabels...)
 	ch <- prometheus.MustNewConstMetric(libvirtDomainOpenstackInfoDesc, prometheus.GaugeValue, 1.0, openstackInfoLabels...)
 
@@ -544,23 +607,24 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 	var isActive int32
 	if isActive, err = l.DomainIsActive(domain.libvirtDomain); err != nil {
 		logger.Error("failed to get active status of domain", "domain", domain.libvirtDomain.Name, "msg", err)
-		return err
+		return err, false
 	}
 	if isActive != 1 {
 		logger.Debug("domain is not active, skipping", "domain", domain.libvirtDomain.Name)
-		return nil
+		return nil, false
 	}
 
 	for _, collectFunc := range []collectFunc{CollectDomainBlockDeviceInfo, CollectDomainNetworkInfo, CollectDomainJobInfo, CollectDomainMemoryStatInfo, CollectDomainVCPUInfo} {
-		if err = collectFunc(ch, l, domain, promLabels, logger); err != nil {
-			logger.Warn("failed to collect some domain info", "domain", domain.libvirtDomain.Name, "msg", err)
+		if err, hasTimedOut = collectFunc(ch, l, domain, promLabels, logger, timeout); err != nil {
+			logger.Error("failed to collect some domain info", "domain", domain.libvirtDomain.Name, "msg", err)
+			return err, hasTimedOut
 		}
 	}
 
-	return nil
+	return nil, false
 }
 
-func GenerateAdditionalBlockMetrics(ch chan<- prometheus.Metric, prometheusDiskLabels []string, capacity uint64, flushRequests uint64, flushTimes uint64, readTime uint64, writeTime uint64){
+func GenerateAdditionalBlockMetrics(ch chan<- prometheus.Metric, prometheusDiskLabels []string, capacity uint64, flushRequests uint64, flushTimes uint64, readTime uint64, writeTime uint64) {
 	ch <- prometheus.MustNewConstMetric(
 		libvirtDomainBlockRdTotalTimeSecondsDesc,
 		prometheus.CounterValue,
@@ -588,25 +652,37 @@ func GenerateAdditionalBlockMetrics(ch chan<- prometheus.Metric, prometheusDiskL
 		prometheusDiskLabels...)
 }
 
-func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger) (err error) {
-	var domainsBlockStats []libvirt.DomainStatsRecord
-	var domains []libvirt.Domain
-	domains = append(domains, domain.libvirtDomain)
+func connectGetAllDomainStats(l *libvirt.Libvirt, domain domainMeta, flag libvirt.DomainStatsTypes, chRes chan<- DomainStatsRecord) {
+	var data DomainStatsRecord
 
-	// https://libvirt.org/html/libvirt-libvirt-domain.html#virConnectGetAllDomainStats
-	if domainsBlockStats, err = l.ConnectGetAllDomainStats(domains, uint32(libvirt.DomainStatsBlock), 0); err != nil {
-		logger.Info("Failed to get additional block stats", "domain", domain.libvirtDomain.Name, "msg", err)
-		return err
+	data.DomainStatsRecord, data.err = l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(flag), uint32(libvirt.ConnectGetAllDomainsStatsNowait))
+	chRes <- data
+}
+
+func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
+	var data []libvirt.DomainStatsRecord
+
+	chRes := make(chan DomainStatsRecord, 1)
+	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsBlock, chRes)
+
+	select {
+	case res := <-chRes:
+		if res.err != nil {
+			return res.err, false
+		}
+		data = res.DomainStatsRecord
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return fmt.Errorf("call to ConnectGetAllDomainStats with DomainStatsBlock flag has timed out"), true
 	}
 
-	domainBlockStats := domainsBlockStats[0]
+	domainBlockStats := data[0]
 	statsIndex := "no_stats"
 	var capacity, flushRequests, flushTimes, readTime, writeTime uint64
 	var prometheusDiskLabels []string
 	for _, param := range domainBlockStats.Params {
 		if matches := additionalBlockStatName.FindStringSubmatch(param.Field); matches != nil {
 			if statsIndex != "no_stats" && statsIndex != matches[1] {
-				GenerateAdditionalBlockMetrics(ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime)	
+				GenerateAdditionalBlockMetrics(ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime)
 			}
 			statsIndex = matches[1]
 			switch matches[2] {
@@ -623,26 +699,70 @@ func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libv
 			case "capacity":
 				capacity = param.Value.I.(uint64)
 			}
-
 		}
 	}
-	if statsIndex != "no_stats"{
+	if statsIndex != "no_stats" {
 		GenerateAdditionalBlockMetrics(ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime)
 	}
+
 	return
 }
 
-func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger) (err error) {
-	// Report block device statistics.
+func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
+	var data []libvirt.DomainStatsRecord
+
+	chRes := make(chan DomainStatsRecord, 1)
+
+	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsBlock, chRes)
+
+	select {
+	case res := <-chRes:
+		if res.err != nil {
+			return res.err, false
+		}
+		data = res.DomainStatsRecord
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return fmt.Errorf("call to ConnectGetAllDomainStats with DomainStatsBlock flag has timed out"), true
+	}
+
+	if len(data) == 0 {
+		return fmt.Errorf("no block stats available"), false
+	}
+
+	domainStatBlock := data[0]
 	for _, disk := range domain.libvirtSchema.Devices.Disks {
 		if disk.Device == "cdrom" || disk.Device == "fd" {
 			continue
 		}
+		var rRdReq, rRdBytes, rWrReq, rWrBytes uint64
 
-		var rRdReq, rRdBytes, rWrReq, rWrBytes int64
-		if rRdReq, rRdBytes, rWrReq, rWrBytes, _, err = l.DomainBlockStats(domain.libvirtDomain, disk.Target.Device); err != nil {
-			logger.Warn("failed to get DomainBlockStats", "domain", domain.libvirtDomain.Name, "msg", err)
-			return err
+		bdev_name := bdevNameRegex
+		bdev_metrics := bdevMetricsRegex
+		var bdevIdx string
+		for _, param := range domainStatBlock.Params {
+			switch {
+			case bdev_name.MatchString(param.Field):
+				// We have a match for the block device name
+				match := bdev_name.FindStringSubmatch(param.Field)
+
+				if param.Value.I.(string) == disk.Target.Device {
+					bdevIdx = match[1]
+				}
+			case len(bdevIdx) > 0 && bdev_metrics.FindStringSubmatch(param.Field)[1] == bdevIdx:
+				// We have a match for the block device index
+				bdev_metric := regexp.MustCompile(fmt.Sprintf(bdevMetricRegexTemplate, bdevIdx))
+				metric := bdev_metric.FindStringSubmatch(param.Field)
+				switch metric[1] {
+				case "rd.bytes":
+					rRdBytes = param.Value.I.(uint64)
+				case "rd.reqs":
+					rRdReq = param.Value.I.(uint64)
+				case "wr.bytes":
+					rWrBytes = param.Value.I.(uint64)
+				case "wr.reqs":
+					rWrReq = param.Value.I.(uint64)
+				}
+			}
 		}
 
 		promDiskLabels := append(promLabels, disk.Target.Device)
@@ -651,25 +771,21 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 			prometheus.CounterValue,
 			float64(rRdBytes),
 			promDiskLabels...)
-
 		ch <- prometheus.MustNewConstMetric(
 			libvirtDomainBlockStatsRdReqDesc,
 			prometheus.CounterValue,
 			float64(rRdReq),
 			promDiskLabels...)
-
 		ch <- prometheus.MustNewConstMetric(
 			libvirtDomainBlockStatsWrBytesDesc,
 			prometheus.CounterValue,
 			float64(rWrBytes),
 			promDiskLabels...)
-
 		ch <- prometheus.MustNewConstMetric(
 			libvirtDomainBlockStatsWrReqDesc,
 			prometheus.CounterValue,
 			float64(rWrReq),
 			promDiskLabels...)
-
 		promDiskInfoLabels := append(promLabels, disk.Type, disk.Target.Bus, disk.Driver.Name, disk.Driver.Type, disk.Driver.Cache, disk.Driver.Discard, disk.Source.File, disk.Source.Protocol, disk.Target.Device, disk.Serial)
 		ch <- prometheus.MustNewConstMetric(
 			libvirtDomainBlockStatsInfo,
@@ -677,23 +793,73 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 			float64(1),
 			promDiskInfoLabels...)
 	}
-	if err = CollectAdditionalDomainBlockDeviceInfo(ch, l, domain, promLabels, logger); err != nil {
-		logger.Info("Failed to get AdditionalDomainBlockStats", "domain", domain.libvirtDomain.Name, "msg", err)
-		return err
+
+	if err, hasTimedOut := CollectAdditionalDomainBlockDeviceInfo(ch, l, domain, promLabels, logger, timeout); err != nil {
+		return err, hasTimedOut
 	}
+
 	return
 }
 
-func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger) (err error) {
-	// Report network interface statistics.
+func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
+	var data []libvirt.DomainStatsRecord
+
+	chRes := make(chan DomainStatsRecord, 1)
+
+	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsInterface, chRes)
+
+	select {
+	case res := <-chRes:
+		if res.err != nil {
+			return res.err, false
+		}
+		data = res.DomainStatsRecord
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return fmt.Errorf("call to ConnectGetAllDomainStats with DomainStatsInterface flag has timed out"), true
+	}
+
+	domainStatsInterface := data[0]
 	for _, iface := range domain.libvirtSchema.Devices.Interfaces {
 		if iface.Target.Device == "" {
 			continue
 		}
-		var rRxBytes, rRxPackets, rRxErrs, rRxDrop, rTxBytes, rTxPackets, rTxErrs, rTxDrop int64
-		if rRxBytes, rRxPackets, rRxErrs, rRxDrop, rTxBytes, rTxPackets, rTxErrs, rTxDrop, err = l.DomainInterfaceStats(domain.libvirtDomain, iface.Target.Device); err != nil {
-			logger.Warn("failed to get DomainInterfaceStats", "domain", domain.libvirtDomain.Name, "msg", err)
-			return err
+		var rRxBytes, rRxPackets, rRxErrs, rRxDrop, rTxBytes, rTxPackets, rTxErrs, rTxDrop uint64
+
+		int_name := intNameRegex
+		int_metrics := intMetricsRegex
+		var intIdx string
+		for _, param := range domainStatsInterface.Params {
+			switch {
+			case int_name.MatchString(param.Field):
+				// We have a match for the interface name
+				match := int_name.FindStringSubmatch(param.Field)
+
+				if param.Value.I.(string) == iface.Target.Device {
+					intIdx = match[1]
+				}
+			case len(intIdx) > 0 && int_metrics.FindStringSubmatch(param.Field)[1] == intIdx:
+				// We have a match for the interface index
+				int_metric := regexp.MustCompile(fmt.Sprintf(intMetricRegexTemplate, intIdx))
+				metric := int_metric.FindStringSubmatch(param.Field)
+				switch metric[1] {
+				case "rx.bytes":
+					rRxBytes = param.Value.I.(uint64)
+				case "rx.pkts":
+					rRxPackets = param.Value.I.(uint64)
+				case "rx.errs":
+					rRxErrs = param.Value.I.(uint64)
+				case "rx.drop":
+					rRxDrop = param.Value.I.(uint64)
+				case "tx.bytes":
+					rTxBytes = param.Value.I.(uint64)
+				case "tx.pkts":
+					rTxPackets = param.Value.I.(uint64)
+				case "tx.errs":
+					rTxErrs = param.Value.I.(uint64)
+				case "tx.drop":
+					rTxDrop = param.Value.I.(uint64)
+				}
+			}
 		}
 
 		promInterfaceLabels := append(promLabels, iface.Target.Device)
@@ -752,18 +918,56 @@ func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, d
 			float64(1),
 			promInterfaceInfoLabels...)
 	}
+
 	return
 }
 
-func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger) (err error) {
-	var rType int32
-	var rTimeElapsed, rTimeRemaining, rDataTotal, rDataProcessed, rDataRemaining, rMemTotal,
+func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
+	var (
+		rType int32
+		rTimeElapsed, rTimeRemaining, rDataTotal, rDataProcessed, rDataRemaining, rMemTotal,
 		rMemProcessed, rMemRemaining, rFileTotal, rFileProcessed, rFileRemaining uint64
+	)
 
-	if rType, rTimeElapsed, rTimeRemaining, rDataTotal, rDataProcessed, rDataRemaining,
-		rMemTotal, rMemProcessed, rMemRemaining, rFileTotal, rFileProcessed, rFileRemaining, err = l.DomainGetJobInfo(domain.libvirtDomain); err != nil {
-		logger.Warn("failed to get job info", "domain", domain.libvirtDomain.Name, "msg", err)
-		return err
+	type rDomainGetJobInfo struct {
+		rType int32
+		rTimeElapsed, rTimeRemaining, rDataTotal, rDataProcessed, rDataRemaining, rMemTotal,
+		rMemProcessed, rMemRemaining, rFileTotal, rFileProcessed, rFileRemaining uint64
+		err error
+	}
+
+	chDomainGetJobInfo := make(chan rDomainGetJobInfo, 1)
+	go func() {
+		var data rDomainGetJobInfo
+		data.rType, data.rTimeElapsed, data.rTimeRemaining, data.rDataTotal, data.rDataProcessed, data.rDataRemaining,
+			data.rMemTotal, data.rMemProcessed, data.rMemRemaining, data.rFileTotal, data.rFileProcessed, data.rFileRemaining, data.err = l.DomainGetJobInfo(domain.libvirtDomain)
+		chDomainGetJobInfo <- data
+	}()
+
+	select {
+	case res := <-chDomainGetJobInfo:
+
+		if res.err != nil {
+			libvirtErr, _ := res.err.(libvirt.Error)
+			if libvirtErr.Code == 84 { // VIR_ERR_OPERATION_UNSUPPORTED (https://github.com/inovex/prometheus-libvirt-exporter/pull/77#issuecomment-2826913542)
+				return nil, false
+			}
+			return res.err, false
+		}
+		rType = res.rType
+		rTimeElapsed = res.rTimeElapsed
+		rTimeRemaining = res.rTimeRemaining
+		rDataTotal = res.rDataTotal
+		rDataProcessed = res.rDataProcessed
+		rDataRemaining = res.rDataRemaining
+		rMemTotal = res.rMemTotal
+		rMemProcessed = res.rMemProcessed
+		rMemRemaining = res.rMemRemaining
+		rFileTotal = res.rFileTotal
+		rFileProcessed = res.rFileProcessed
+		rFileRemaining = res.rFileRemaining
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return fmt.Errorf("call to DomainGetJobInfo has timed out"), true
 	}
 
 	ch <- prometheus.MustNewConstMetric(
@@ -826,100 +1030,119 @@ func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domai
 		prometheus.GaugeValue,
 		float64(rFileRemaining),
 		promLabels...)
+
 	return
 }
 
-func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger) (err error) {
-	//collect stat info
-	var rStats []libvirt.DomainMemoryStat
-	if rStats, err = l.DomainMemoryStats(domain.libvirtDomain, uint32(libvirt.DomainMemoryStatNr), 0); err != nil {
-		logger.Warn("failed to get DomainMemoryStats", "domain", domain.libvirtDomain.Name, "msg", err)
-		return err
+func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
+	var data []libvirt.DomainStatsRecord
+
+	chRes := make(chan DomainStatsRecord)
+
+	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsBalloon, chRes)
+
+	select {
+	case res := <-chRes:
+		if res.err != nil {
+			return res.err, false
+		}
+		data = res.DomainStatsRecord
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return fmt.Errorf("call to ConnectGetAllDomainStats with DomainStatsBalloon flag has timed out"), true
 	}
+
+	domainStatsMemory := data[0]
 	var available, usable uint64
-	for _, stat := range rStats {
-		switch stat.Tag {
-		case int32(libvirt.DomainMemoryStatSwapIn):
+	for _, param := range domainStatsMemory.Params {
+		switch param.Field {
+		case "balloon.swap_in":
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatsSwapInBytesDesc,
 				prometheus.GaugeValue,
-				float64(stat.Val)*1024,
+				float64(param.Value.I.(uint64)*1024),
 				promLabels...)
-		case int32(libvirt.DomainMemoryStatSwapOut):
+		case "balloon.swap_out":
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatsSwapOutBytesDesc,
 				prometheus.GaugeValue,
-				float64(stat.Val)*1024,
+				float64(param.Value.I.(uint64)*1024),
 				promLabels...)
-		case int32(libvirt.DomainMemoryStatUnused):
+		case "balloon.unused":
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatsUnusedBytesDesc,
 				prometheus.GaugeValue,
-				float64(stat.Val*1024),
+				float64(param.Value.I.(uint64)*1024),
 				promLabels...)
-		case int32(libvirt.DomainMemoryStatAvailable):
-			available = stat.Val
+		case "balloon.available":
+			available = param.Value.I.(uint64)
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatsAvailableInBytesDesc,
 				prometheus.GaugeValue,
-				float64(stat.Val*1024),
+				float64(param.Value.I.(uint64)*1024),
 				promLabels...)
-		case int32(libvirt.DomainMemoryStatUsable):
-			usable = stat.Val
+		case "balloon.usable":
+			usable = param.Value.I.(uint64)
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatsUsableBytesDesc,
 				prometheus.GaugeValue,
-				float64(stat.Val*1024),
+				float64(param.Value.I.(uint64)*1024),
 				promLabels...)
-		case int32(libvirt.DomainMemoryStatRss):
+		case "balloon.rss":
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatsRssBytesDesc,
 				prometheus.GaugeValue,
-				float64(stat.Val*1024),
+				float64(param.Value.I.(uint64)*1024),
 				promLabels...)
-		case int32(libvirt.DomainMemoryStatActualBalloon):
+		case "balloon.current":
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatActualBaloonBytesDesc,
 				prometheus.GaugeValue,
-				float64(stat.Val*1024),
+				float64(param.Value.I.(uint64)*1024),
 				promLabels...)
-		case int32(libvirt.DomainMemoryStatMajorFault):
+		case "balloon.major_fault":
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatMajorFaultTotalDesc,
 				prometheus.CounterValue,
-				float64(stat.Val),
+				float64(param.Value.I.(uint64)),
 				promLabels...)
-		case int32(libvirt.DomainMemoryStatMinorFault):
+		case "balloon.minor_fault":
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatMinorFaultTotalDesc,
 				prometheus.CounterValue,
-				float64(stat.Val),
+				float64(param.Value.I.(uint64)),
 				promLabels...)
 		}
 	}
 	ch <- prometheus.MustNewConstMetric(
 		libvirtDomainMemoryStatUsedPercentDesc,
 		prometheus.GaugeValue,
-		float64((float64(available) - float64(usable)) / (float64(available) / float64(100))),
+		(float64(available)-float64(usable))/(float64(available)/float64(100)),
 		promLabels...)
+
 	return
 }
 
-func CollectDomainVCPUInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger) (err error) {
-	//collect domain vCPU stats
-	var stats []libvirt.DomainStatsRecord
-	// ConnectGetAllDomainStats expects a list of domains
-	var d []libvirt.Domain
-	d = append(d, domain.libvirtDomain)
+func CollectDomainVCPUInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
+	var data []libvirt.DomainStatsRecord
 
-	if stats, err = l.ConnectGetAllDomainStats(d, uint32(libvirt.DomainStatsVCPU), 0); err != nil {
-		logger.Warn("failed to get vcpu stats", "domain", domain.libvirtDomain.Name, "msg", err)
-		return err
+	chRes := make(chan DomainStatsRecord, 1)
+
+	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsVCPU, chRes)
+
+	select {
+	case res := <-chRes:
+		if res.err != nil {
+			return res.err, false
+		}
+		data = res.DomainStatsRecord
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return fmt.Errorf("call to ConnectGetAllDomainStats with DomainStatsVCPU flag has timed out"), true
 	}
+
 	current := regexp.MustCompile("vcpu.current")
 	maximum := regexp.MustCompile("vcpu.maximum")
 	vcpu_metrics := regexp.MustCompile(`vcpu\.\d+\.\w+`)
-	for _, stat := range stats {
+	for _, stat := range data {
 		for _, param := range stat.Params {
 			switch true {
 			case current.MatchString(param.Field):
@@ -973,41 +1196,67 @@ func CollectDomainVCPUInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, doma
 			}
 		}
 	}
+
 	return
 }
 
-func CollectStoragePoolInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, pool libvirt.StoragePool, logger *slog.Logger) (err error) {
+func CollectStoragePoolInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, pool libvirt.StoragePool, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
 	// Report storage pool metrics
-	var rState uint8
-	var rCapacity, rAllocation, rAvailable uint64
+	var (
+		pState                             uint8
+		pCapacity, pAllocation, pAvailable uint64
+	)
+
+	type rStoragePoolGetInfo struct {
+		pState                             uint8
+		pCapacity, pAllocation, pAvailable uint64
+		err                                error
+	}
+
+	chrStoragePoolGetInfo := make(chan rStoragePoolGetInfo, 1)
+	go func() {
+		var data rStoragePoolGetInfo
+		data.pState, data.pCapacity, data.pAllocation, data.pAvailable, data.err = l.StoragePoolGetInfo(pool)
+		chrStoragePoolGetInfo <- data
+	}()
+
+	select {
+	case res := <-chrStoragePoolGetInfo:
+		if res.err != nil {
+			return res.err, false
+		}
+		pState = res.pState
+		pCapacity = res.pCapacity
+		pAllocation = res.pAllocation
+		pAvailable = res.pAvailable
+	case <-time.After(time.Duration(timeout) * time.Second):
+		return fmt.Errorf("call to StoragePoolGetInfo has timed out"), true
+	}
 
 	promLabels := []string{
 		pool.Name,
 	}
-	if rState, rCapacity, rAllocation, rAvailable, err = l.StoragePoolGetInfo(pool); err != nil {
-		logger.Warn("failed to get StoragePoolInfo for pool", "pool", pool.Name, "msg", err)
-		return err
-	}
 	ch <- prometheus.MustNewConstMetric(
 		libvirtStoragePoolState,
 		prometheus.GaugeValue,
-		float64(rState),
+		float64(pState),
 		promLabels...)
 	ch <- prometheus.MustNewConstMetric(
 		libvirtStoragePoolCapacity,
 		prometheus.GaugeValue,
-		float64(rCapacity),
+		float64(pCapacity),
 		promLabels...)
 	ch <- prometheus.MustNewConstMetric(
 		libvirtStoragePoolAllocation,
 		prometheus.GaugeValue,
-		float64(rAllocation),
+		float64(pAllocation),
 		promLabels...)
 	ch <- prometheus.MustNewConstMetric(
 		libvirtStoragePoolAvailable,
 		prometheus.GaugeValue,
-		float64(rAvailable),
+		float64(pAvailable),
 		promLabels...)
+
 	return
 }
 
