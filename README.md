@@ -34,6 +34,7 @@ This release provides a set of assets for the prometheus-libvirt-exporter. It in
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | up                                                    |                                                                                                                                               | scraping libvirt's metrics state                                                                                                                                                         |
 | libvirt_domains                                       |                                                                                                                                               | number of domains                                                                                                                                                                        |
+| libvirt_domain_timed_out                              | "domain"                                                                                                                                      | Whether scraping libvirt's domain metrics has timed out|
 | libvirt_domain_openstack_info                         | "domain", "instance_name", "instance_id", "flavor_name", "user_name", "user_id", "project_name", "project_id"                                 | Aggregated OpenStack metadata as labels                                                                                                                                                  |
 | libvirt_domain_info                                   | "domain", "os_type", "os_type_machine", "os_type_arch"                                                                                        | e.g. os (operating system booting) settings as labels                                                                                                                                    |
 | libvirt_domain_info_state                             | "domain", "state_desc"                                                                                                                        | Code of the domain state,include state description                                                                                                                                       |
@@ -92,6 +93,7 @@ This release provides a set of assets for the prometheus-libvirt-exporter. It in
 | libvirt_storage_pool_available_bytes                  | "storage_pool"                                                                                                                                | Remaining free space of the storage pool in bytes                                                                                                                                        |
 | libvirt_storage_pool_capacity_bytes                   | "storage_pool"                                                                                                                                | Size of the storage pool in logical bytes                                                                                                                                                |
 | libvirt_storage_pool_state                            | "storage_pool"                                                                                                                                | State of the storage pool                                                                                                                                                                |
+| libvirt_storage_pool_timed_out                        | "storage_pool"                                                                                                                                | Whether scraping libvirt's pool metrics has timed out pool                                                                                                                                                                |
 
 ## Example
 
@@ -138,8 +140,11 @@ libvirt_domain_vcpu_maximum{domain="instance-00000131"} 2
 libvirt_domain_vcpu_state{domain="instance-00000131",vcpu="0"} 1
 libvirt_domain_vcpu_time_seconds_total{domain="instance-00000131",vcpu="0"} 2111850000000
 libvirt_domain_vcpu_wait_seconds_total{domain="instance-00000131",vcpu="0"} 4103560000000
+libvirt_domain_timed_out{domain="instance-00000337"} 0
+libvirt_domain_timed_out{domain="instance-0001e06e"} 0
 libvirt_storage_pool_allocation_bytes{storage_pool="testpool"} 5309386752
 libvirt_storage_pool_available_bytes{storage_pool="testpool"} 7264227328
 libvirt_storage_pool_capacity_bytes{storage_pool="testpool"} 12573614080
 libvirt_storage_pool_state{storage_pool="testpool"} 2
+libvirt_storage_pool_timed_out{storage_pool="testpool"} 0
 ```
