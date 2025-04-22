@@ -705,50 +705,45 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 			case <-timer.C:
 				chQuit <- true
 				logger.Warn("DomainBlockStats hangs", "domain", domain.libvirtDomain.Name)
-				rRdReq = -1
-				rRdBytes = -1
-				rWrReq = -1
-				rWrBytes = -1
 				hasTimedOut = true
 			}
 			close(chError)
 			close(chRes)
 			close(chQuit)
 
-			promDiskLabels := append(promLabels, disk.Target.Device)
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainBlockStatsRdBytesDesc,
-				prometheus.CounterValue,
-				float64(rRdBytes),
-				promDiskLabels...)
+			if !hasTimedOut {
+				promDiskLabels := append(promLabels, disk.Target.Device)
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockStatsRdBytesDesc,
+					prometheus.CounterValue,
+					float64(rRdBytes),
+					promDiskLabels...)
 
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainBlockStatsRdReqDesc,
-				prometheus.CounterValue,
-				float64(rRdReq),
-				promDiskLabels...)
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockStatsRdReqDesc,
+					prometheus.CounterValue,
+					float64(rRdReq),
+					promDiskLabels...)
 
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainBlockStatsWrBytesDesc,
-				prometheus.CounterValue,
-				float64(rWrBytes),
-				promDiskLabels...)
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockStatsWrBytesDesc,
+					prometheus.CounterValue,
+					float64(rWrBytes),
+					promDiskLabels...)
 
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainBlockStatsWrReqDesc,
-				prometheus.CounterValue,
-				float64(rWrReq),
-				promDiskLabels...)
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockStatsWrReqDesc,
+					prometheus.CounterValue,
+					float64(rWrReq),
+					promDiskLabels...)
 
-			promDiskInfoLabels := append(promLabels, disk.Type, disk.Target.Bus, disk.Driver.Name, disk.Driver.Type, disk.Driver.Cache, disk.Driver.Discard, disk.Source.File, disk.Source.Protocol, disk.Target.Device, disk.Serial)
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainBlockStatsInfo,
-				prometheus.GaugeValue,
-				float64(1),
-				promDiskInfoLabels...)
-
-			if hasTimedOut { // if one device stucks, skip others
-				logger.Warn("skiping other devices", "domain", domain.libvirtDomain.Name)
+				promDiskInfoLabels := append(promLabels, disk.Type, disk.Target.Bus, disk.Driver.Name, disk.Driver.Type, disk.Driver.Cache, disk.Driver.Discard, disk.Source.File, disk.Source.Protocol, disk.Target.Device, disk.Serial)
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockStatsInfo,
+					prometheus.GaugeValue,
+					float64(1),
+					promDiskInfoLabels...)
+			} else { // skip others disks
 				break
 			}
 		}
@@ -938,18 +933,6 @@ func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domai
 		case <-timer.C:
 			chQuit <- true
 			logger.Warn("DomainGetJobInfo hangs", "domain", domain.libvirtDomain.Name)
-			rType = 0
-			rTimeElapsed = 0
-			rTimeRemaining = 0
-			rDataTotal = 0
-			rDataProcessed = 0
-			rDataRemaining = 0
-			rMemTotal = 0
-			rMemProcessed = 0
-			rMemRemaining = 0
-			rFileTotal = 0
-			rFileProcessed = 0
-			rFileRemaining = 0
 			hasTimedOut = true
 		}
 		close(chError)
@@ -964,66 +947,68 @@ func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domai
 		}
 	}
 
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobTypeDesc,
-		prometheus.GaugeValue,
-		float64(rType),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobTimeElapsedDesc,
-		prometheus.GaugeValue,
-		float64(rTimeElapsed),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobTimeRemainingDesc,
-		prometheus.GaugeValue,
-		float64(rTimeRemaining),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobDataTotalDesc,
-		prometheus.GaugeValue,
-		float64(rDataTotal),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobDataProcessedDesc,
-		prometheus.GaugeValue,
-		float64(rDataProcessed),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobDataRemainingDesc,
-		prometheus.GaugeValue,
-		float64(rDataRemaining),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobMemTotalDesc,
-		prometheus.GaugeValue,
-		float64(rMemTotal),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobMemProcessedDesc,
-		prometheus.GaugeValue,
-		float64(rMemProcessed),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobMemRemainingDesc,
-		prometheus.GaugeValue,
-		float64(rMemRemaining),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobFileTotalDesc,
-		prometheus.GaugeValue,
-		float64(rFileTotal),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobFileProcessedDesc,
-		prometheus.GaugeValue,
-		float64(rFileProcessed),
-		promLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainJobFileRemainingDesc,
-		prometheus.GaugeValue,
-		float64(rFileRemaining),
-		promLabels...)
+	if !hasTimedOut {
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobTypeDesc,
+			prometheus.GaugeValue,
+			float64(rType),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobTimeElapsedDesc,
+			prometheus.GaugeValue,
+			float64(rTimeElapsed),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobTimeRemainingDesc,
+			prometheus.GaugeValue,
+			float64(rTimeRemaining),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobDataTotalDesc,
+			prometheus.GaugeValue,
+			float64(rDataTotal),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobDataProcessedDesc,
+			prometheus.GaugeValue,
+			float64(rDataProcessed),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobDataRemainingDesc,
+			prometheus.GaugeValue,
+			float64(rDataRemaining),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobMemTotalDesc,
+			prometheus.GaugeValue,
+			float64(rMemTotal),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobMemProcessedDesc,
+			prometheus.GaugeValue,
+			float64(rMemProcessed),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobMemRemainingDesc,
+			prometheus.GaugeValue,
+			float64(rMemRemaining),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobFileTotalDesc,
+			prometheus.GaugeValue,
+			float64(rFileTotal),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobFileProcessedDesc,
+			prometheus.GaugeValue,
+			float64(rFileProcessed),
+			promLabels...)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainJobFileRemainingDesc,
+			prometheus.GaugeValue,
+			float64(rFileRemaining),
+			promLabels...)
+	}
 	return
 }
 
@@ -1067,11 +1052,6 @@ func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt
 		case <-timer.C:
 			chQuit <- true
 			logger.Warn("DomainMemoryStats hangs", "domain", domain.libvirtDomain.Name)
-			rStats = make([]libvirt.DomainMemoryStat, 0)
-			rStats = append(rStats, libvirt.DomainMemoryStat{Tag: 1, Val: 1})
-			rStats = append(rStats, libvirt.DomainMemoryStat{Tag: 2, Val: 1})
-			rStats = append(rStats, libvirt.DomainMemoryStat{Tag: 3, Val: 1})
-			rStats = append(rStats, libvirt.DomainMemoryStat{Tag: 4, Val: 1})
 			hasTimedOut = true
 		}
 
@@ -1086,72 +1066,74 @@ func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt
 		}
 	}
 
-	var available, usable uint64
-	for _, stat := range rStats {
-		switch stat.Tag {
-		case int32(libvirt.DomainMemoryStatSwapIn):
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatsSwapInBytesDesc,
-				prometheus.GaugeValue,
-				float64(stat.Val)*1024,
-				promLabels...)
-		case int32(libvirt.DomainMemoryStatSwapOut):
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatsSwapOutBytesDesc,
-				prometheus.GaugeValue,
-				float64(stat.Val)*1024,
-				promLabels...)
-		case int32(libvirt.DomainMemoryStatUnused):
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatsUnusedBytesDesc,
-				prometheus.GaugeValue,
-				float64(stat.Val*1024),
-				promLabels...)
-		case int32(libvirt.DomainMemoryStatAvailable):
-			available = stat.Val
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatsAvailableInBytesDesc,
-				prometheus.GaugeValue,
-				float64(stat.Val*1024),
-				promLabels...)
-		case int32(libvirt.DomainMemoryStatUsable):
-			usable = stat.Val
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatsUsableBytesDesc,
-				prometheus.GaugeValue,
-				float64(stat.Val*1024),
-				promLabels...)
-		case int32(libvirt.DomainMemoryStatRss):
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatsRssBytesDesc,
-				prometheus.GaugeValue,
-				float64(stat.Val*1024),
-				promLabels...)
-		case int32(libvirt.DomainMemoryStatActualBalloon):
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatActualBaloonBytesDesc,
-				prometheus.GaugeValue,
-				float64(stat.Val*1024),
-				promLabels...)
-		case int32(libvirt.DomainMemoryStatMajorFault):
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatMajorFaultTotalDesc,
-				prometheus.CounterValue,
-				float64(stat.Val),
-				promLabels...)
-		case int32(libvirt.DomainMemoryStatMinorFault):
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatMinorFaultTotalDesc,
-				prometheus.CounterValue,
-				float64(stat.Val),
-				promLabels...)
+	if !hasTimedOut {
+		var available, usable uint64
+		for _, stat := range rStats {
+			switch stat.Tag {
+			case int32(libvirt.DomainMemoryStatSwapIn):
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainMemoryStatsSwapInBytesDesc,
+					prometheus.GaugeValue,
+					float64(stat.Val)*1024,
+					promLabels...)
+			case int32(libvirt.DomainMemoryStatSwapOut):
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainMemoryStatsSwapOutBytesDesc,
+					prometheus.GaugeValue,
+					float64(stat.Val)*1024,
+					promLabels...)
+			case int32(libvirt.DomainMemoryStatUnused):
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainMemoryStatsUnusedBytesDesc,
+					prometheus.GaugeValue,
+					float64(stat.Val*1024),
+					promLabels...)
+			case int32(libvirt.DomainMemoryStatAvailable):
+				available = stat.Val
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainMemoryStatsAvailableInBytesDesc,
+					prometheus.GaugeValue,
+					float64(stat.Val*1024),
+					promLabels...)
+			case int32(libvirt.DomainMemoryStatUsable):
+				usable = stat.Val
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainMemoryStatsUsableBytesDesc,
+					prometheus.GaugeValue,
+					float64(stat.Val*1024),
+					promLabels...)
+			case int32(libvirt.DomainMemoryStatRss):
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainMemoryStatsRssBytesDesc,
+					prometheus.GaugeValue,
+					float64(stat.Val*1024),
+					promLabels...)
+			case int32(libvirt.DomainMemoryStatActualBalloon):
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainMemoryStatActualBaloonBytesDesc,
+					prometheus.GaugeValue,
+					float64(stat.Val*1024),
+					promLabels...)
+			case int32(libvirt.DomainMemoryStatMajorFault):
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainMemoryStatMajorFaultTotalDesc,
+					prometheus.CounterValue,
+					float64(stat.Val),
+					promLabels...)
+			case int32(libvirt.DomainMemoryStatMinorFault):
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainMemoryStatMinorFaultTotalDesc,
+					prometheus.CounterValue,
+					float64(stat.Val),
+					promLabels...)
+			}
 		}
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainMemoryStatUsedPercentDesc,
+			prometheus.GaugeValue,
+			(float64(available)-float64(usable))/(float64(available)/float64(100)),
+			promLabels...)
 	}
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainMemoryStatUsedPercentDesc,
-		prometheus.GaugeValue,
-		(float64(available)-float64(usable))/(float64(available)/float64(100)),
-		promLabels...)
 	return
 }
 
