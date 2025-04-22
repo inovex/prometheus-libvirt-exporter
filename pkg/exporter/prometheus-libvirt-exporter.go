@@ -24,9 +24,9 @@ var (
 		nil,
 		nil)
 
-	libvirtDomainMigrationTimedOutDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "", "domain_migration_timed_out"),
-		"Whether scraping libvirt's metrics has timed out during domain migration.",
+	libvirtDomainTimedOutDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "domain_timed_out"),
+		"Whether scraping libvirt's metrics has timed out.",
 		[]string{"domain"},
 		nil)
 
@@ -570,9 +570,9 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 	}
 
 	if hasTimedOut {
-		ch <- prometheus.MustNewConstMetric(libvirtDomainMigrationTimedOutDesc, prometheus.GaugeValue, float64(1), promLabels...)
+		ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(1), promLabels...)
 	} else {
-		ch <- prometheus.MustNewConstMetric(libvirtDomainMigrationTimedOutDesc, prometheus.GaugeValue, float64(0), promLabels...)
+		ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(0), promLabels...)
 	}
 
 	return nil
