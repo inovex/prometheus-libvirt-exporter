@@ -15,7 +15,7 @@ import (
 
 const namespace = "libvirt"
 
-var timedout bool
+var hasTimedOut bool
 
 var (
 	libvirtUpDesc = prometheus.NewDesc(
@@ -562,14 +562,14 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 		return nil
 	}
 
-	timedout = false
+	hasTimedOut = false
 	for _, collectFunc := range []collectFunc{CollectDomainBlockDeviceInfo, CollectDomainNetworkInfo, CollectDomainJobInfo, CollectDomainMemoryStatInfo, CollectDomainVCPUInfo} {
 		if err = collectFunc(ch, l, domain, promLabels, logger, timeout); err != nil {
 			logger.Warn("failed to collect some domain info", "domain", domain.libvirtDomain.Name, "msg", err)
 		}
 	}
 
-	if timedout {
+	if hasTimedOut {
 		ch <- prometheus.MustNewConstMetric(libvirtDomainMigrationTimedOutDesc, prometheus.GaugeValue, float64(1), promLabels...)
 	} else {
 		ch <- prometheus.MustNewConstMetric(libvirtDomainMigrationTimedOutDesc, prometheus.GaugeValue, float64(0), promLabels...)
@@ -709,7 +709,7 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 				rRdBytes = -1
 				rWrReq = -1
 				rWrBytes = -1
-				timedout = true
+				hasTimedOut = true
 			}
 			close(chError)
 			close(chRes)
@@ -747,7 +747,7 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 				float64(1),
 				promDiskInfoLabels...)
 
-			if timedout { // if one device stucks, skip others
+			if hasTimedOut { // if one device stucks, skip others
 				logger.Warn("skiping other devices", "domain", domain.libvirtDomain.Name)
 				break
 			}
@@ -950,7 +950,7 @@ func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domai
 			rFileTotal = 0
 			rFileProcessed = 0
 			rFileRemaining = 0
-			timedout = true
+			hasTimedOut = true
 		}
 		close(chError)
 		close(chRes)
@@ -1072,7 +1072,7 @@ func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt
 			rStats = append(rStats, libvirt.DomainMemoryStat{Tag: 2, Val: 1})
 			rStats = append(rStats, libvirt.DomainMemoryStat{Tag: 3, Val: 1})
 			rStats = append(rStats, libvirt.DomainMemoryStat{Tag: 4, Val: 1})
-			timedout = true
+			hasTimedOut = true
 		}
 
 		close(chError)
