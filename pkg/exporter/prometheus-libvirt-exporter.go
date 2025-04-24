@@ -1054,127 +1054,80 @@ func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domai
 }
 
 func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout int) (err error) {
-	var rStats []libvirt.DomainMemoryStat
-
-	if timeout > 0 {
-		//collect stat info
-		var domainMemoryStatInfo = func(chError chan error, chRes chan []libvirt.DomainMemoryStat, chQuit chan bool) {
-			var rStats []libvirt.DomainMemoryStat
-			rStats, err = l.DomainMemoryStats(domain.libvirtDomain, uint32(libvirt.DomainMemoryStatNr), 0)
-			select {
-			case <-chQuit:
-				return
-			default:
-				if err != nil {
-					chError <- err
-				} else {
-					chRes <- rStats
-				}
-			}
-		}
-
-		var timer *time.Timer = time.NewTimer(time.Second * time.Duration(timeout))
-		var chError chan error
-		var chRes chan []libvirt.DomainMemoryStat
-		var chQuit chan bool
-
-		chQuit = make(chan bool, 1)
-		chRes = make(chan []libvirt.DomainMemoryStat)
-		chError = make(chan error)
-		go domainMemoryStatInfo(chError, chRes, chQuit)
-
-		timer.Reset(time.Second * time.Duration(timeout))
-
-		select {
-		case e := <-chError:
-			logger.Warn("failed to get DomainMemoryStats", "domain", domain.libvirtDomain.Name, "msg", e)
-		case res := <-chRes:
-			rStats = res
-		case <-timer.C:
-			chQuit <- true
-			logger.Warn("DomainMemoryStats hangs", "domain", domain.libvirtDomain.Name)
-			hasTimedOut = true
-		}
-
-		close(chError)
-		close(chRes)
-		close(chQuit)
-	} else {
-		//collect stat info
-		if rStats, err = l.DomainMemoryStats(domain.libvirtDomain, uint32(libvirt.DomainMemoryStatNr), 0); err != nil {
-			logger.Warn("failed to get DomainMemoryStats", "domain", domain.libvirtDomain.Name, "msg", err)
-			return err
-		}
+	var mStats []libvirt.DomainStatsRecord
+	if mStats, err = l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(libvirt.DomainStatsBalloon), uint32(libvirt.ConnectGetAllDomainsStatsNowait)); err != nil {
+		logger.Warn("failed to get DomainMemoryStats", "domain", domain.libvirtDomain.Name, "msg", err)
+		return err
 	}
 
-	if !hasTimedOut {
-		var available, usable uint64
-		for _, stat := range rStats {
-			switch stat.Tag {
-			case int32(libvirt.DomainMemoryStatSwapIn):
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainMemoryStatsSwapInBytesDesc,
-					prometheus.GaugeValue,
-					float64(stat.Val)*1024,
-					promLabels...)
-			case int32(libvirt.DomainMemoryStatSwapOut):
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainMemoryStatsSwapOutBytesDesc,
-					prometheus.GaugeValue,
-					float64(stat.Val)*1024,
-					promLabels...)
-			case int32(libvirt.DomainMemoryStatUnused):
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainMemoryStatsUnusedBytesDesc,
-					prometheus.GaugeValue,
-					float64(stat.Val*1024),
-					promLabels...)
-			case int32(libvirt.DomainMemoryStatAvailable):
-				available = stat.Val
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainMemoryStatsAvailableInBytesDesc,
-					prometheus.GaugeValue,
-					float64(stat.Val*1024),
-					promLabels...)
-			case int32(libvirt.DomainMemoryStatUsable):
-				usable = stat.Val
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainMemoryStatsUsableBytesDesc,
-					prometheus.GaugeValue,
-					float64(stat.Val*1024),
-					promLabels...)
-			case int32(libvirt.DomainMemoryStatRss):
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainMemoryStatsRssBytesDesc,
-					prometheus.GaugeValue,
-					float64(stat.Val*1024),
-					promLabels...)
-			case int32(libvirt.DomainMemoryStatActualBalloon):
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainMemoryStatActualBaloonBytesDesc,
-					prometheus.GaugeValue,
-					float64(stat.Val*1024),
-					promLabels...)
-			case int32(libvirt.DomainMemoryStatMajorFault):
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainMemoryStatMajorFaultTotalDesc,
-					prometheus.CounterValue,
-					float64(stat.Val),
-					promLabels...)
-			case int32(libvirt.DomainMemoryStatMinorFault):
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainMemoryStatMinorFaultTotalDesc,
-					prometheus.CounterValue,
-					float64(stat.Val),
-					promLabels...)
-			}
+	domainStatsMemory := mStats[0]
+
+	var available, usable uint64
+	for _, param := range domainStatsMemory.Params {
+		switch param.Field {
+		case "balloon.swap_in":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsSwapInBytesDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
+		case "balloon.swap_out":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsSwapOutBytesDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
+		case "balloon.unused":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsUnusedBytesDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
+		case "balloon.available":
+			available = param.Value.I.(uint64)
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsAvailableInBytesDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
+		case "balloon.usable":
+			usable = param.Value.I.(uint64)
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsUsableBytesDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
+		case "balloon.rss":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsRssBytesDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
+		case "balloon.actual":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatActualBaloonBytesDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
+		case "balloon.major_fault":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatMajorFaultTotalDesc,
+				prometheus.CounterValue,
+				float64(param.Value.I.(uint64)),
+				promLabels...)
+		case "balloon.minor_fault":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatMinorFaultTotalDesc,
+				prometheus.CounterValue,
+				float64(param.Value.I.(uint64)),
+				promLabels...)
 		}
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainMemoryStatUsedPercentDesc,
-			prometheus.GaugeValue,
-			(float64(available)-float64(usable))/(float64(available)/float64(100)),
-			promLabels...)
 	}
+	ch <- prometheus.MustNewConstMetric(
+		libvirtDomainMemoryStatUsedPercentDesc,
+		prometheus.GaugeValue,
+		(float64(available)-float64(usable))/(float64(available)/float64(100)),
+		promLabels...)
 	return
 }
 
