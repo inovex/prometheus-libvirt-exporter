@@ -801,15 +801,56 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 }
 
 func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout int) (err error) {
-	// Report network interface statistics.
+	var nStats []libvirt.DomainStatsRecord
+
+	if nStats, err = l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(libvirt.DomainStatsInterface), uint32(libvirt.ConnectGetAllDomainsStatsNowait)); err != nil {
+		logger.Warn("failed to get DomainInterfaceStats", "domain", domain.libvirtDomain.Name, "msg", err)
+		return err
+	}
+
+	domainStatsInterface := nStats[0]
+
 	for _, iface := range domain.libvirtSchema.Devices.Interfaces {
 		if iface.Target.Device == "" {
 			continue
 		}
-		var rRxBytes, rRxPackets, rRxErrs, rRxDrop, rTxBytes, rTxPackets, rTxErrs, rTxDrop int64
-		if rRxBytes, rRxPackets, rRxErrs, rRxDrop, rTxBytes, rTxPackets, rTxErrs, rTxDrop, err = l.DomainInterfaceStats(domain.libvirtDomain, iface.Target.Device); err != nil {
-			logger.Warn("failed to get DomainInterfaceStats", "domain", domain.libvirtDomain.Name, "msg", err)
-			return err
+		var rRxBytes, rRxPackets, rRxErrs, rRxDrop, rTxBytes, rTxPackets, rTxErrs, rTxDrop uint64
+
+		int_name := regexp.MustCompile(`net\.(\d+)\.name`)
+		int_metrics := regexp.MustCompile(`net\.(\d+)\.(rx|tx)\.(\w+)`)
+		var intIdx string
+		for _, param := range domainStatsInterface.Params {
+			switch {
+			case int_name.MatchString(param.Field):
+				// We have a match for the interface name
+				match := int_name.FindStringSubmatch(param.Field)
+
+				if param.Value.I.(string) == iface.Target.Device {
+					intIdx = match[1]
+				}
+			case len(intIdx) > 0 && int_metrics.FindStringSubmatch(param.Field)[1] == intIdx:
+				// We have a match for the interface index
+				int_metric := regexp.MustCompile(`net\.` + intIdx + `\.(.+)`)
+				metric := int_metric.FindStringSubmatch(param.Field)
+				switch metric[1] {
+				case "rx.bytes":
+					rRxBytes = param.Value.I.(uint64)
+				case "rx.pkts":
+					rRxPackets = param.Value.I.(uint64)
+				case "rx.errs":
+					rRxErrs = param.Value.I.(uint64)
+				case "rx.drop":
+					rRxDrop = param.Value.I.(uint64)
+				case "tx.bytes":
+					rTxBytes = param.Value.I.(uint64)
+				case "tx.pkts":
+					rTxPackets = param.Value.I.(uint64)
+				case "tx.errs":
+					rTxErrs = param.Value.I.(uint64)
+				case "tx.drop":
+					rTxDrop = param.Value.I.(uint64)
+				}
+			}
 		}
 
 		promInterfaceLabels := append(promLabels, iface.Target.Device)
