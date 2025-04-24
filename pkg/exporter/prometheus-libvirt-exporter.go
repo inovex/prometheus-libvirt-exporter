@@ -658,141 +658,83 @@ func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libv
 }
 
 func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout int) (err error) {
-	if timeout > 0 {
+	var bStats []libvirt.DomainStatsRecord
 
-		var domainBlockStats = func(chError chan error, chRes chan [4]int64, chQuit chan bool, disk libvirt_schema.Disk) {
-			var rRdReq, rRdBytes, rWrReq, rWrBytes int64
-			rRdReq, rRdBytes, rWrReq, rWrBytes, _, err = l.DomainBlockStats(domain.libvirtDomain, disk.Target.Device)
-			select {
-			case <-chQuit:
-				return
-			default:
-				if err != nil {
-					chError <- err
-				} else {
-					chRes <- [4]int64{rRdReq, rRdBytes, rWrReq, rWrBytes}
+	if bStats, err = l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(libvirt.DomainStatsBlock), uint32(libvirt.ConnectGetAllDomainsStatsNowait)); err != nil {
+		logger.Warn("failed to get DomainStatsBlock", "domain", domain.libvirtDomain.Name, "msg", err)
+		return err
+	}
+
+	domainStatBlock := bStats[0]
+
+	for _, disk := range domain.libvirtSchema.Devices.Disks {
+		if disk.Device == "cdrom" || disk.Device == "fd" {
+			continue
+		}
+		var rRdReq, rRdBytes, rWrReq, rWrBytes uint64
+
+		bdev_name := regexp.MustCompile(`block\.(\d+)\.name`)
+		bdev_metrics := regexp.MustCompile(`block\.(\d+)\..+`)
+		var bdevIdx string
+		for _, param := range domainStatBlock.Params {
+			switch {
+			case bdev_name.MatchString(param.Field):
+				// We have a match for the block device name
+				match := bdev_name.FindStringSubmatch(param.Field)
+
+				if param.Value.I.(string) == disk.Target.Device {
+					bdevIdx = match[1]
+				}
+			case len(bdevIdx) > 0 && bdev_metrics.FindStringSubmatch(param.Field)[1] == bdevIdx:
+				// We have a match for the block device index
+				bdev_metric := regexp.MustCompile(`block\.` + bdevIdx + `\.(.+)`)
+				metric := bdev_metric.FindStringSubmatch(param.Field)
+				switch metric[1] {
+				case "rd.bytes":
+					rRdBytes = param.Value.I.(uint64)
+				case "rd.reqs":
+					rRdReq = param.Value.I.(uint64)
+				case "wr.bytes":
+					rWrBytes = param.Value.I.(uint64)
+				case "wr.reqs":
+					rWrReq = param.Value.I.(uint64)
 				}
 			}
 		}
 
-		var timer *time.Timer = time.NewTimer(time.Second * time.Duration(timeout))
-		var chError chan error
-		var chRes chan [4]int64
-		var chQuit chan bool
+		promDiskLabels := append(promLabels, disk.Target.Device)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockStatsRdBytesDesc,
+			prometheus.CounterValue,
+			float64(rRdBytes),
+			promDiskLabels...)
 
-		// Report block device statistics.
-		for _, disk := range domain.libvirtSchema.Devices.Disks {
-			if disk.Device == "cdrom" || disk.Device == "fd" {
-				continue
-			}
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockStatsRdReqDesc,
+			prometheus.CounterValue,
+			float64(rRdReq),
+			promDiskLabels...)
 
-			var rRdReq, rRdBytes, rWrReq, rWrBytes int64
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockStatsWrBytesDesc,
+			prometheus.CounterValue,
+			float64(rWrBytes),
+			promDiskLabels...)
 
-			chQuit = make(chan bool, 1)
-			chRes = make(chan [4]int64)
-			chError = make(chan error)
-			go domainBlockStats(chError, chRes, chQuit, disk)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockStatsWrReqDesc,
+			prometheus.CounterValue,
+			float64(rWrReq),
+			promDiskLabels...)
 
-			timer.Reset(time.Second * time.Duration(timeout))
-			select {
-			case e := <-chError:
-				logger.Warn("failed to get DomainBlockStats", "domain", domain.libvirtDomain.Name, "msg", e)
-			case res := <-chRes:
-				rRdReq = res[0]
-				rRdBytes = res[1]
-				rWrReq = res[2]
-				rWrBytes = res[3]
-			case <-timer.C:
-				chQuit <- true
-				logger.Warn("DomainBlockStats hangs", "domain", domain.libvirtDomain.Name)
-				hasTimedOut = true
-			}
-			close(chError)
-			close(chRes)
-			close(chQuit)
-
-			if !hasTimedOut {
-				promDiskLabels := append(promLabels, disk.Target.Device)
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainBlockStatsRdBytesDesc,
-					prometheus.CounterValue,
-					float64(rRdBytes),
-					promDiskLabels...)
-
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainBlockStatsRdReqDesc,
-					prometheus.CounterValue,
-					float64(rRdReq),
-					promDiskLabels...)
-
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainBlockStatsWrBytesDesc,
-					prometheus.CounterValue,
-					float64(rWrBytes),
-					promDiskLabels...)
-
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainBlockStatsWrReqDesc,
-					prometheus.CounterValue,
-					float64(rWrReq),
-					promDiskLabels...)
-
-				promDiskInfoLabels := append(promLabels, disk.Type, disk.Target.Bus, disk.Driver.Name, disk.Driver.Type, disk.Driver.Cache, disk.Driver.Discard, disk.Source.File, disk.Source.Protocol, disk.Target.Device, disk.Serial)
-				ch <- prometheus.MustNewConstMetric(
-					libvirtDomainBlockStatsInfo,
-					prometheus.GaugeValue,
-					float64(1),
-					promDiskInfoLabels...)
-			} else { // skip others disks
-				break
-			}
-		}
-	} else {
-		// Report block device statistics.
-		for _, disk := range domain.libvirtSchema.Devices.Disks {
-			if disk.Device == "cdrom" || disk.Device == "fd" {
-				continue
-			}
-
-			var rRdReq, rRdBytes, rWrReq, rWrBytes int64
-			if rRdReq, rRdBytes, rWrReq, rWrBytes, _, err = l.DomainBlockStats(domain.libvirtDomain, disk.Target.Device); err != nil {
-				logger.Warn("failed to get DomainBlockStats", "domain", domain.libvirtDomain.Name, "msg", err)
-				return err
-			}
-
-			promDiskLabels := append(promLabels, disk.Target.Device)
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainBlockStatsRdBytesDesc,
-				prometheus.CounterValue,
-				float64(rRdBytes),
-				promDiskLabels...)
-
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainBlockStatsRdReqDesc,
-				prometheus.CounterValue,
-				float64(rRdReq),
-				promDiskLabels...)
-
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainBlockStatsWrBytesDesc,
-				prometheus.CounterValue,
-				float64(rWrBytes),
-				promDiskLabels...)
-
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainBlockStatsWrReqDesc,
-				prometheus.CounterValue,
-				float64(rWrReq),
-				promDiskLabels...)
-
-			promDiskInfoLabels := append(promLabels, disk.Type, disk.Target.Bus, disk.Driver.Name, disk.Driver.Type, disk.Driver.Cache, disk.Driver.Discard, disk.Source.File, disk.Source.Protocol, disk.Target.Device, disk.Serial)
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainBlockStatsInfo,
-				prometheus.GaugeValue,
-				float64(1),
-				promDiskInfoLabels...)
-		}
+		promDiskInfoLabels := append(promLabels, disk.Type, disk.Target.Bus, disk.Driver.Name, disk.Driver.Type, disk.Driver.Cache, disk.Driver.Discard, disk.Source.File, disk.Source.Protocol, disk.Target.Device, disk.Serial)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockStatsInfo,
+			prometheus.GaugeValue,
+			float64(1),
+			promDiskInfoLabels...)
 	}
+
 	if err = CollectAdditionalDomainBlockDeviceInfo(ch, l, domain, promLabels, logger, timeout); err != nil {
 		logger.Info("Failed to get AdditionalDomainBlockStats", "domain", domain.libvirtDomain.Name, "msg", err)
 		return err
