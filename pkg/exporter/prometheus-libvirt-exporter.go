@@ -918,6 +918,10 @@ func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domai
 
 		if rType, rTimeElapsed, rTimeRemaining, rDataTotal, rDataProcessed, rDataRemaining,
 			rMemTotal, rMemProcessed, rMemRemaining, rFileTotal, rFileProcessed, rFileRemaining, err = l.DomainGetJobInfo(domain.libvirtDomain); err != nil {
+			libvirtErr, _ := err.(libvirt.Error)
+			if libvirtErr.Code == 84 { // VIR_ERR_OPERATION_UNSUPPORTED (https://github.com/inovex/prometheus-libvirt-exporter/pull/77#issuecomment-2826913542)
+				return nil
+			}
 			logger.Warn("failed to get job info", "domain", domain.libvirtDomain.Name, "msg", err)
 			return err
 		}
@@ -1072,7 +1076,7 @@ func CollectDomainVCPUInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, doma
 	// ConnectGetAllDomainStats expects a list of domains
 	var d []libvirt.Domain
 	d = append(d, domain.libvirtDomain)
-	
+
 	if stats, err = l.ConnectGetAllDomainStats(d, uint32(libvirt.DomainStatsVCPU), uint32(libvirt.ConnectGetAllDomainsStatsNowait)); err != nil {
 		logger.Warn("failed to get vcpu stats", "domain", domain.libvirtDomain.Name, "msg", err)
 		return err
