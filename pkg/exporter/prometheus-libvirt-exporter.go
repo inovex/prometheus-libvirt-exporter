@@ -1072,15 +1072,8 @@ func CollectDomainVCPUInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, doma
 	// ConnectGetAllDomainStats expects a list of domains
 	var d []libvirt.Domain
 	d = append(d, domain.libvirtDomain)
-
-	var nowait uint32
-	if timeout > 0 {
-		nowait = uint32(libvirt.ConnectGetAllDomainsStatsNowait)
-	} else {
-		nowait = 0
-	}
-
-	if stats, err = l.ConnectGetAllDomainStats(d, uint32(libvirt.DomainStatsVCPU), nowait); err != nil {
+	
+	if stats, err = l.ConnectGetAllDomainStats(d, uint32(libvirt.DomainStatsVCPU), uint32(libvirt.ConnectGetAllDomainsStatsNowait)); err != nil {
 		logger.Warn("failed to get vcpu stats", "domain", domain.libvirtDomain.Name, "msg", err)
 		return err
 	}
