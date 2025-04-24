@@ -611,15 +611,8 @@ func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libv
 	var domains []libvirt.Domain
 	domains = append(domains, domain.libvirtDomain)
 
-	var nowait uint32
-	if timeout > 0 {
-		nowait = uint32(libvirt.ConnectGetAllDomainsStatsNowait)
-	} else {
-		nowait = 0
-	}
-
 	// https://libvirt.org/html/libvirt-libvirt-domain.html#virConnectGetAllDomainStats
-	if domainsBlockStats, err = l.ConnectGetAllDomainStats(domains, uint32(libvirt.DomainStatsBlock), nowait); err != nil {
+	if domainsBlockStats, err = l.ConnectGetAllDomainStats(domains, uint32(libvirt.DomainStatsBlock), uint32(libvirt.ConnectGetAllDomainsStatsNowait)); err != nil {
 		logger.Info("Failed to get additional block stats", "domain", domain.libvirtDomain.Name, "msg", err)
 		return err
 	}
