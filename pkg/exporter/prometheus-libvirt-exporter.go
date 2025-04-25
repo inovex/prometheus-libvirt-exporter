@@ -659,30 +659,30 @@ func GenerateAdditionalBlockMetrics(ch chan<- prometheus.Metric, prometheusDiskL
 		prometheusDiskLabels...)
 }
 
-func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout int) (err error) {
-	var bStats []libvirt.DomainStatsRecord
+var connectGetAllDomainStats = func(l *libvirt.Libvirt, domain domainMeta, flag libvirt.DomainStatsTypes, chError chan error, chRes chan<- []libvirt.DomainStatsRecord, chQuit chan bool) {
+	var rStats []libvirt.DomainStatsRecord
+	rStats, err := l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(flag), uint32(libvirt.ConnectGetAllDomainsStatsNowait))
 
-	var connectGetAllDomainStats = func(chError chan error, chRes chan<- []libvirt.DomainStatsRecord, chQuit chan bool) {
-		var bStats []libvirt.DomainStatsRecord
-		bStats, err := l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(libvirt.DomainStatsBlock), uint32(libvirt.ConnectGetAllDomainsStatsNowait))
-
-		select {
-		case <-chQuit:
-			return
-		default:
-			if err != nil {
-				chError <- err
-			} else {
-				chRes <- bStats
-			}
+	select {
+	case <-chQuit:
+		return
+	default:
+		if err != nil {
+			chError <- err
+		} else {
+			chRes <- rStats
 		}
 	}
+}
+
+func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout int) (err error) {
+	var bStats []libvirt.DomainStatsRecord
 
 	chQuit := make(chan bool, 1)
 	chRes := make(chan []libvirt.DomainStatsRecord, 1)
 	chError := make(chan error, 1)
 
-	go connectGetAllDomainStats(chError, chRes, chQuit)
+	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsBlock, chError, chRes, chQuit)
 
 	var timer *time.Timer = time.NewTimer(time.Second * time.Duration(timeout))
 
@@ -739,27 +739,11 @@ func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libv
 func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout int) (err error) {
 	var bStats []libvirt.DomainStatsRecord
 
-	var connectGetAllDomainStats = func(chError chan error, chRes chan<- []libvirt.DomainStatsRecord, chQuit chan bool) {
-		var bStats []libvirt.DomainStatsRecord
-		bStats, err := l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(libvirt.DomainStatsBlock), uint32(libvirt.ConnectGetAllDomainsStatsNowait))
-
-		select {
-		case <-chQuit:
-			return
-		default:
-			if err != nil {
-				chError <- err
-			} else {
-				chRes <- bStats
-			}
-		}
-	}
-
 	chQuit := make(chan bool, 1)
 	chRes := make(chan []libvirt.DomainStatsRecord, 1)
 	chError := make(chan error, 1)
 
-	go connectGetAllDomainStats(chError, chRes, chQuit)
+	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsBlock, chError, chRes, chQuit)
 
 	var timer *time.Timer = time.NewTimer(time.Second * time.Duration(timeout))
 
@@ -855,27 +839,11 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout int) (err error) {
 	var nStats []libvirt.DomainStatsRecord
 
-	var connectGetAllDomainStats = func(chError chan error, chRes chan<- []libvirt.DomainStatsRecord, chQuit chan bool) {
-		var nStats []libvirt.DomainStatsRecord
-		nStats, err := l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(libvirt.DomainStatsInterface), uint32(libvirt.ConnectGetAllDomainsStatsNowait))
-
-		select {
-		case <-chQuit:
-			return
-		default:
-			if err != nil {
-				chError <- err
-			} else {
-				chRes <- nStats
-			}
-		}
-	}
-
 	chQuit := make(chan bool, 1)
 	chRes := make(chan []libvirt.DomainStatsRecord, 1)
 	chError := make(chan error, 1)
 
-	go connectGetAllDomainStats(chError, chRes, chQuit)
+	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsInterface, chError, chRes, chQuit)
 
 	var timer *time.Timer = time.NewTimer(time.Second * time.Duration(timeout))
 
@@ -1140,27 +1108,11 @@ func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domai
 func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout int) (err error) {
 	var mStats []libvirt.DomainStatsRecord
 
-	var connectGetAllDomainStats = func(chError chan error, chRes chan<- []libvirt.DomainStatsRecord, chQuit chan bool) {
-		var mStats []libvirt.DomainStatsRecord
-		mStats, err = l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(libvirt.DomainStatsBalloon), uint32(libvirt.ConnectGetAllDomainsStatsNowait))
-
-		select {
-		case <-chQuit:
-			return
-		default:
-			if err != nil {
-				chError <- err
-			} else {
-				chRes <- mStats
-			}
-		}
-	}
-
 	chQuit := make(chan bool, 1)
 	chRes := make(chan []libvirt.DomainStatsRecord)
 	chError := make(chan error)
 
-	go connectGetAllDomainStats(chError, chRes, chQuit)
+	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsBalloon, chError, chRes, chQuit)
 
 	var timer *time.Timer = time.NewTimer(time.Second * time.Duration(timeout))
 
@@ -1255,27 +1207,11 @@ func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt
 func CollectDomainVCPUInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout int) (err error) {
 	var vStats []libvirt.DomainStatsRecord
 
-	var connectGetAllDomainStats = func(chError chan error, chRes chan<- []libvirt.DomainStatsRecord, chQuit chan bool) {
-		var vStats []libvirt.DomainStatsRecord
-		vStats, err = l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(libvirt.DomainStatsVCPU), uint32(libvirt.ConnectGetAllDomainsStatsNowait))
-
-		select {
-		case <-chQuit:
-			return
-		default:
-			if err != nil {
-				chError <- err
-			} else {
-				chRes <- vStats
-			}
-		}
-	}
-
 	chQuit := make(chan bool, 1)
 	chRes := make(chan []libvirt.DomainStatsRecord)
 	chError := make(chan error)
 
-	go connectGetAllDomainStats(chError, chRes, chQuit)
+	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsVCPU, chError, chRes, chQuit)
 
 	var timer *time.Timer = time.NewTimer(time.Second * time.Duration(timeout))
 
