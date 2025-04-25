@@ -8,27 +8,27 @@ By default, this exporter listens on TCP port 9177, path '/metrics', to expose m
 
 This exporter is built upon the [go-libvirt](https://github.com/digitalocean/go-libvirt) package developed by DigitalOcean. It offers a pure Go interface for interacting with Libvirt, leveraging the RPC interface provided by Libvirt. For detailed information about the Go bindings used, you can refer to the [Libvirt API reference](https://libvirt.org/html/index.html).
 
-# Building and running
+## Building and running
 
 This release provides a set of assets for the prometheus-libvirt-exporter. It includes installation packages for various platforms (apk, deb, rpm) and the the binaries. Additionally, source code archives in both zip and tar.gz formats are available for download.
 
-## Requirements
+### Requirements
 
 1. Gorelease: `go install github.com/goreleaser/goreleaser@latest`
 
 2. Taskfile: `go install github.com/go-task/task/v3/cmd/task@latest`
 
-## Local Building
+### Local Building
 
 1. Run `task build`
 
 2. Afterwards all packages, binaries and archives are available in the `dist/` folder
 
-## To see all available configuration flags:
+### To see all available configuration flags
 
 `./prometheus-libvirt-exporter -h`
 
-## metrics
+### metrics
 
 | Name                                                  | Label                                                                                                                                         | Description                                                                                                                                                                              |
 | ----------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -97,7 +97,7 @@ This release provides a set of assets for the prometheus-libvirt-exporter. It in
 
 ## Example
 
-```
+```text
 libvirt_domain_block_stats_info{disk_type="network",domain="instance-0001e06e",driver_cache="none",driver_discard="unmap",driver_name="qemu",driver_type="raw",serial="6ef20b92-1d9d-4de9-8a81-e324b98ae787",source_file="",target_bus="scsi",target_device="sda"} 1
 libvirt_domain_block_stats_read_bytes_total{domain="instance-0001e06e",target_device="vda"} 1.497283072e+09
 libvirt_domain_block_stats_read_requests_total{domain="instance-0001e06e",target_device="vda"} 23560
