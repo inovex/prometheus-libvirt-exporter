@@ -96,7 +96,7 @@ This release provides a set of assets for the prometheus-libvirt-exporter. It in
 
 ## Example
 
-```
+```text
 libvirt_domain_block_stats_info{disk_type="network",domain="instance-0001e06e",driver_cache="none",driver_discard="unmap",driver_name="qemu",driver_type="raw",serial="6ef20b92-1d9d-4de9-8a81-e324b98ae787",source_file="",target_bus="scsi",target_device="sda"} 1
 libvirt_domain_block_stats_read_bytes_total{domain="instance-0001e06e",target_device="vda"} 1.497283072e+09
 libvirt_domain_block_stats_read_requests_total{domain="instance-0001e06e",target_device="vda"} 23560
