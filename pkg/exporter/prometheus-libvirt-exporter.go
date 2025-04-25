@@ -522,7 +522,7 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 		rmaxmem, rmemory, rcputime uint64
 	}
 
-	var connectGetAllDomainStats = func(chError chan error, chRes chan<- rDomainStatsState, chQuit chan bool) {
+	var domainGetInfo = func(chError chan error, chRes chan<- rDomainStatsState, chQuit chan bool) {
 		var rDomainStatsState struct {
 			rState                     uint8
 			rvirCpu                    uint16
@@ -547,7 +547,7 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 	chRes := make(chan rDomainStatsState)
 	chError := make(chan error, 1)
 
-	go connectGetAllDomainStats(chError, chRes, chQuit)
+	go domainGetInfo(chError, chRes, chQuit)
 
 	var timer *time.Timer = time.NewTimer(time.Second * time.Duration(timeout))
 
