@@ -32,7 +32,7 @@ func main() {
 		).Default(string(libvirt.QEMUSystem)).String()
 		timeout = kingpin.Flag("exporter.timeout",
 			"Force the exporter to respond (seconds) even if it is blocked during a migration.",
-		).Default("-1").Int()
+		).Default("3").Int()
 	)
 
 	metricsPath := kingpin.Flag(
