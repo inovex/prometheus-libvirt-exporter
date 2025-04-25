@@ -31,7 +31,7 @@ func main() {
 			fmt.Sprintf("Available drivers: %s (Default), %s, %s and %s ", libvirt.QEMUSystem, libvirt.QEMUSession, libvirt.XenSystem, libvirt.TestDefault),
 		).Default(string(libvirt.QEMUSystem)).String()
 		timeout = kingpin.Flag("exporter.timeout",
-			"Force the exporter to respond (seconds) even if it is blocked during a migration.",
+			"Maximum libvirt API call duration (seconds).",
 		).Default("3").Int()
 	)
 
