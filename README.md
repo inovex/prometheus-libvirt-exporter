@@ -24,7 +24,7 @@ This release provides a set of assets for the prometheus-libvirt-exporter. It in
 
 2. Afterwards all packages, binaries and archives are available in the `dist/` folder
 
-### To see all available configuration flags:
+### To see all available configuration flags
 
 `./prometheus-libvirt-exporter -h`
 
