@@ -1293,7 +1293,7 @@ func CollectDomainVCPUInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, doma
 	return
 }
 
-func CollectStoragePoolInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, pool libvirt.StoragePool, logger *slog.Logger, timsout int) (err error) {
+func CollectStoragePoolInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, pool libvirt.StoragePool, logger *slog.Logger, timeout int) (err error) {
 	// Report storage pool metrics
 	var pState uint8
 	var pCapacity, pAllocation, pAvailable uint64
@@ -1329,7 +1329,7 @@ func CollectStoragePoolInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, poo
 
 	go storagePoolGetInfo(chError, chRes, chQuit)
 
-	var timer *time.Timer = time.NewTimer(time.Second * time.Duration(timsout))
+	var timer *time.Timer = time.NewTimer(time.Second * time.Duration(timeout))
 
 	select {
 	case e := <-chError:
