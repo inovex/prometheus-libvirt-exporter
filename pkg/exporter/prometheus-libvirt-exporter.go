@@ -1350,31 +1350,31 @@ func CollectStoragePoolInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, poo
 
 	if err != nil {
 		return err
-	} else {
-		promLabels := []string{
-			pool.Name,
-		}
-		ch <- prometheus.MustNewConstMetric(
-			libvirtStoragePoolState,
-			prometheus.GaugeValue,
-			float64(pState),
-			promLabels...)
-		ch <- prometheus.MustNewConstMetric(
-			libvirtStoragePoolCapacity,
-			prometheus.GaugeValue,
-			float64(pCapacity),
-			promLabels...)
-		ch <- prometheus.MustNewConstMetric(
-			libvirtStoragePoolAllocation,
-			prometheus.GaugeValue,
-			float64(pAllocation),
-			promLabels...)
-		ch <- prometheus.MustNewConstMetric(
-			libvirtStoragePoolAvailable,
-			prometheus.GaugeValue,
-			float64(pAvailable),
-			promLabels...)
 	}
+
+	promLabels := []string{
+		pool.Name,
+	}
+	ch <- prometheus.MustNewConstMetric(
+		libvirtStoragePoolState,
+		prometheus.GaugeValue,
+		float64(pState),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtStoragePoolCapacity,
+		prometheus.GaugeValue,
+		float64(pCapacity),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtStoragePoolAllocation,
+		prometheus.GaugeValue,
+		float64(pAllocation),
+		promLabels...)
+	ch <- prometheus.MustNewConstMetric(
+		libvirtStoragePoolAvailable,
+		prometheus.GaugeValue,
+		float64(pAvailable),
+		promLabels...)
 	return
 }
 
