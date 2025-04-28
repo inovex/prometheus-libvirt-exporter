@@ -473,6 +473,10 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 	l := libvirt.NewWithDialer(dialer)
 	if err = l.ConnectToURI(driver); err != nil {
 		logger.Error("failed to connect", "msg", err)
+		ch <- prometheus.MustNewConstMetric(
+			libvirtUpDesc,
+			prometheus.GaugeValue,
+			0.0)
 		return err
 	}
 
