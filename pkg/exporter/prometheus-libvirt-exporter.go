@@ -529,7 +529,7 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 			rmaxmem, rmemory, rcputime uint64
 		}
 
-		rState, rmaxmem, rmemory, rvirCpu, rcputime, err = l.DomainGetInfo(domain.libvirtDomain)
+		rDomainStatsState.rState, rDomainStatsState.rmaxmem, rDomainStatsState.rmemory, rDomainStatsState.rvirCpu, rDomainStatsState.rcputime, err = l.DomainGetInfo(domain.libvirtDomain)
 
 		select {
 		case <-chQuit:
