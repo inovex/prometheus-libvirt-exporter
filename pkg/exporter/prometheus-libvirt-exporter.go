@@ -506,8 +506,8 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 	}
 	for _, pool := range pools {
 		if err = CollectStoragePoolInfo(ch, l, pool, logger, timeout); err != nil {
-			logger.Error("failed to collect storage pool info", "msg", err)
-			return err
+			logger.Error("failed to collect storage pool info", "pool", pool.Name, "msg", err)
+			continue
 		}
 	}
 
