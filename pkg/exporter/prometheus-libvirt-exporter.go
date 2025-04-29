@@ -493,7 +493,7 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 	for _, domain := range domains {
 		if err = CollectDomain(ch, l, domain, logger, timeout); err != nil {
 			logger.Error("failed to collect domain", "domain", domain.domainName, "msg", err)
-			return err
+			continue
 		}
 	}
 
