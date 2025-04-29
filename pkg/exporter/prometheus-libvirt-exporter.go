@@ -767,6 +767,8 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 
 	if err != nil {
 		return err
+	} else if len(bStats) == 0 {
+		return fmt.Errorf("no block stats available")
 	} else {
 		domainStatBlock := bStats[0]
 		for _, disk := range domain.libvirtSchema.Devices.Disks {
