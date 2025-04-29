@@ -360,6 +360,12 @@ var (
 	}
 
 	additionalBlockStatName = regexp.MustCompile(`block\.(\d+)\.(.+)`)
+	bdevNameRegex           = regexp.MustCompile(`block\.(\d+)\.name`)
+	bdevMetricsRegex 		= regexp.MustCompile(`block\.(\d+)\..+`)
+	bdevMetricRegexTemplate = `block\.%s\.(.+)`
+	intNameRegex 			= regexp.MustCompile(`net\.(\d+)\.name`)
+	intMetricsRegex			= regexp.MustCompile(`net\.(\d+)\.(rx|tx)\.(\w+)`)
+	intMetricRegexTemplate 	= `net\.%s\.(.+)`
 )
 
 type collectFunc func(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout int) (err error)
@@ -777,8 +783,8 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 			}
 			var rRdReq, rRdBytes, rWrReq, rWrBytes uint64
 
-			bdev_name := regexp.MustCompile(`block\.(\d+)\.name`)
-			bdev_metrics := regexp.MustCompile(`block\.(\d+)\..+`)
+			bdev_name := bdevNameRegex
+			bdev_metrics := bdevMetricsRegex
 			var bdevIdx string
 			for _, param := range domainStatBlock.Params {
 				switch {
@@ -791,7 +797,7 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 					}
 				case len(bdevIdx) > 0 && bdev_metrics.FindStringSubmatch(param.Field)[1] == bdevIdx:
 					// We have a match for the block device index
-					bdev_metric := regexp.MustCompile(`block\.` + bdevIdx + `\.(.+)`)
+					bdev_metric := regexp.MustCompile(fmt.Sprintf(bdevMetricRegexTemplate, bdevIdx))
 					metric := bdev_metric.FindStringSubmatch(param.Field)
 					switch metric[1] {
 					case "rd.bytes":
@@ -877,8 +883,8 @@ func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, d
 			}
 			var rRxBytes, rRxPackets, rRxErrs, rRxDrop, rTxBytes, rTxPackets, rTxErrs, rTxDrop uint64
 
-			int_name := regexp.MustCompile(`net\.(\d+)\.name`)
-			int_metrics := regexp.MustCompile(`net\.(\d+)\.(rx|tx)\.(\w+)`)
+			int_name := intNameRegex
+			int_metrics := intMetricsRegex
 			var intIdx string
 			for _, param := range domainStatsInterface.Params {
 				switch {
@@ -891,7 +897,7 @@ func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, d
 					}
 				case len(intIdx) > 0 && int_metrics.FindStringSubmatch(param.Field)[1] == intIdx:
 					// We have a match for the interface index
-					int_metric := regexp.MustCompile(`net\.` + intIdx + `\.(.+)`)
+					int_metric := regexp.MustCompile(fmt.Sprintf(intMetricRegexTemplate, intIdx))
 					metric := int_metric.FindStringSubmatch(param.Field)
 					switch metric[1] {
 					case "rx.bytes":
