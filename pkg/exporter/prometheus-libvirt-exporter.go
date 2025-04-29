@@ -663,7 +663,7 @@ func GenerateAdditionalBlockMetrics(ch chan<- prometheus.Metric, prometheusDiskL
 		prometheusDiskLabels...)
 }
 
-var connectGetAllDomainStats = func(l *libvirt.Libvirt, domain domainMeta, flag libvirt.DomainStatsTypes, chError chan error, chRes chan<- []libvirt.DomainStatsRecord, chQuit chan bool) {
+func connectGetAllDomainStats(l *libvirt.Libvirt, domain domainMeta, flag libvirt.DomainStatsTypes, chError chan error, chRes chan<- []libvirt.DomainStatsRecord, chQuit chan bool) {
 	var rStats []libvirt.DomainStatsRecord
 	rStats, err := l.ConnectGetAllDomainStats([]libvirt.Domain{domain.libvirtDomain}, uint32(flag), uint32(libvirt.ConnectGetAllDomainsStatsNowait))
 
