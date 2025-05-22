@@ -155,18 +155,18 @@ var (
 		"Resident Set Size of the process running the domain",
 		[]string{"domain"},
 		nil)
-	libvirtDomainMemoryStatActualBaloonBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "domain_memory_stats", "actual_balloon_bytes"),
+	libvirtDomainMemoryStatsCurrentBalloonBytesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_memory_stats", "current_balloon_bytes"),
 		"Current balloon value (in bytes).",
 		[]string{"domain"},
 		nil)
-	libvirtDomainMemoryStatMajorFaultTotalDesc = prometheus.NewDesc(
+	libvirtDomainMemoryStatsMajorFaultTotalDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_memory_stats", "major_fault_total"),
 		"Page faults occur when a process makes a valid access to virtual memory that is not available. "+
 			"When servicing the page fault, if disk IO is required, it is considered a major fault.",
 		[]string{"domain"},
 		nil)
-	libvirtDomainMemoryStatMinorFaultTotalDesc = prometheus.NewDesc(
+	libvirtDomainMemoryStatsMinorFaultTotalDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_memory_stats", "minor_fault_total"),
 		"Page faults occur when a process makes a valid access to virtual memory that is not available. "+
 			"When servicing the page not fault, if disk IO is required, it is considered a minor fault.",
@@ -1099,19 +1099,19 @@ func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt
 				promLabels...)
 		case "balloon.current":
 			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatActualBaloonBytesDesc,
+				libvirtDomainMemoryStatsCurrentBalloonBytesDesc,
 				prometheus.GaugeValue,
 				float64(param.Value.I.(uint64)*1024),
 				promLabels...)
 		case "balloon.major_fault":
 			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatMajorFaultTotalDesc,
+				libvirtDomainMemoryStatsMajorFaultTotalDesc,
 				prometheus.CounterValue,
 				float64(param.Value.I.(uint64)),
 				promLabels...)
 		case "balloon.minor_fault":
 			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatMinorFaultTotalDesc,
+				libvirtDomainMemoryStatsMinorFaultTotalDesc,
 				prometheus.CounterValue,
 				float64(param.Value.I.(uint64)),
 				promLabels...)
@@ -1323,9 +1323,9 @@ func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- libvirtDomainMemoryStatsAvailableInBytesDesc
 	ch <- libvirtDomainMemoryStatsUsableBytesDesc
 	ch <- libvirtDomainMemoryStatsRssBytesDesc
-	ch <- libvirtDomainMemoryStatActualBaloonBytesDesc
-	ch <- libvirtDomainMemoryStatMajorFaultTotalDesc
-	ch <- libvirtDomainMemoryStatMinorFaultTotalDesc
+	ch <- libvirtDomainMemoryStatsCurrentBalloonBytesDesc
+	ch <- libvirtDomainMemoryStatsMajorFaultTotalDesc
+	ch <- libvirtDomainMemoryStatsMinorFaultTotalDesc
 
 	//domain vcpu stats
 	ch <- libvirtDomainVCPUStatsCurrent
