@@ -30,6 +30,9 @@ func main() {
 		driver = kingpin.Flag("libvirt.driver",
 			fmt.Sprintf("Available drivers: %s (Default), %s, %s and %s ", libvirt.QEMUSystem, libvirt.QEMUSession, libvirt.XenSystem, libvirt.TestDefault),
 		).Default(string(libvirt.QEMUSystem)).String()
+		timeout = kingpin.Flag("exporter.timeout",
+			"Maximum libvirt API call duration.",
+		).Default("3s").Duration()
 	)
 
 	metricsPath := kingpin.Flag(
@@ -46,8 +49,9 @@ func main() {
 
 	logger.Info("Starting libvirt_exporter", "version", prometheus_version.Info())
 	logger.Info("Build context", "build_context", prometheus_version.BuildContext())
+	logger.Info("Timeout value", "timeout_value", *timeout)
 
-	exporter, err := exporter.NewLibvirtExporter(*libvirtURI, libvirt.ConnectURI(*driver), logger)
+	exporter, err := exporter.NewLibvirtExporter(*libvirtURI, libvirt.ConnectURI(*driver), logger, *timeout)
 	if err != nil {
 		panic(err)
 	}
