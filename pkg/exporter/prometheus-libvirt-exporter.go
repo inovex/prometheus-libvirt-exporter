@@ -125,6 +125,16 @@ var (
 		nil)
 
 	//domain memory stats
+	libvirtDomainMemoryStatsCurrentBalloonBytesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_memory_stats", "current_balloon_bytes"),
+		"Current balloon value (in bytes).",
+		[]string{"domain"},
+		nil)
+	libvirtDomainMemoryStatsMaximumBytesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_memory_stats", "maximum_bytes"),
+		"Maximum memory used by the domain (the maximum amount of memory that can be used by the domain)",
+		[]string{"domain"},
+		nil)
 	libvirtDomainMemoryStatsSwapInBytesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_memory_stats", "swap_in_bytes"),
 		"Memory swapped in for this domain(the total amount of data read from swap space)",
@@ -133,6 +143,18 @@ var (
 	libvirtDomainMemoryStatsSwapOutBytesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_memory_stats", "swap_out_bytes"),
 		"Memory swapped out for this domain (the total amount of memory written out to swap space)",
+		[]string{"domain"},
+		nil)
+	libvirtDomainMemoryStatsMajorFaultTotalDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_memory_stats", "major_fault_total"),
+		"Page faults occur when a process makes a valid access to virtual memory that is not available. "+
+			"When servicing the page fault, if disk IO is required, it is considered a major fault.",
+		[]string{"domain"},
+		nil)
+	libvirtDomainMemoryStatsMinorFaultTotalDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_memory_stats", "minor_fault_total"),
+		"Page faults occur when a process makes a valid access to virtual memory that is not available. "+
+			"When servicing the page not fault, if disk IO is required, it is considered a minor fault.",
 		[]string{"domain"},
 		nil)
 	libvirtDomainMemoryStatsUnusedBytesDesc = prometheus.NewDesc(
@@ -150,26 +172,29 @@ var (
 		"Memory usable by the domain (corresponds to 'Available' in /proc/meminfo)",
 		[]string{"domain"},
 		nil)
+	libvirtDomainMemoryStatsLastUpdateDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_memory_stats", "last_update_timestamp_seconds"),
+		"Last time the memory stats were updated for this domain, in seconds since epoch.",
+		[]string{"domain"},
+		nil)
+	libvirtDomainMemoryStatsDiskCachesBytesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_memory_stats", "disk_caches_bytes"),
+		"Memory used by disk caches for this domain",
+		[]string{"domain"},
+		nil)
+	libvirtDomainMemoryStatsHugeTLBPageAllocTotalDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_memory_stats", "hugetlb_pgalloc_total"),
+		"The number of successful huge page allocations from inside the domain via virtio balloon",
+		[]string{"domain"},
+		nil)
+	libvirtDomainMemoryStatsHugeTLBPageFailTotalDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_memory_stats", "hugetlb_pgfail_total"),
+		"The number of failed huge page allocations from inside the domain via virtio balloon",
+		[]string{"domain"},
+		nil)
 	libvirtDomainMemoryStatsRssBytesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_memory_stats", "rss_bytes"),
 		"Resident Set Size of the process running the domain",
-		[]string{"domain"},
-		nil)
-	libvirtDomainMemoryStatsCurrentBalloonBytesDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "domain_memory_stats", "current_balloon_bytes"),
-		"Current balloon value (in bytes).",
-		[]string{"domain"},
-		nil)
-	libvirtDomainMemoryStatsMajorFaultTotalDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "domain_memory_stats", "major_fault_total"),
-		"Page faults occur when a process makes a valid access to virtual memory that is not available. "+
-			"When servicing the page fault, if disk IO is required, it is considered a major fault.",
-		[]string{"domain"},
-		nil)
-	libvirtDomainMemoryStatsMinorFaultTotalDesc = prometheus.NewDesc(
-		prometheus.BuildFQName(namespace, "domain_memory_stats", "minor_fault_total"),
-		"Page faults occur when a process makes a valid access to virtual memory that is not available. "+
-			"When servicing the page not fault, if disk IO is required, it is considered a minor fault.",
 		[]string{"domain"},
 		nil)
 	libvirtDomainMemoryStatUsedPercentDesc = prometheus.NewDesc(
@@ -1059,6 +1084,18 @@ func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt
 	var available, usable uint64
 	for _, param := range domainStatsMemory.Params {
 		switch param.Field {
+		case "balloon.current":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsCurrentBalloonBytesDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
+		case "balloon.maximum":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsMaximumBytesDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
 		case "balloon.swap_in":
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatsSwapInBytesDesc,
@@ -1070,6 +1107,18 @@ func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt
 				libvirtDomainMemoryStatsSwapOutBytesDesc,
 				prometheus.GaugeValue,
 				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
+		case "balloon.major_fault":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsMajorFaultTotalDesc,
+				prometheus.CounterValue,
+				float64(param.Value.I.(uint64)),
+				promLabels...)
+		case "balloon.minor_fault":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsMinorFaultTotalDesc,
+				prometheus.CounterValue,
+				float64(param.Value.I.(uint64)),
 				promLabels...)
 		case "balloon.unused":
 			ch <- prometheus.MustNewConstMetric(
@@ -1091,29 +1140,35 @@ func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt
 				prometheus.GaugeValue,
 				float64(param.Value.I.(uint64)*1024),
 				promLabels...)
+		case "balloon.last-update":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsLastUpdateDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)),
+				promLabels...)
+		case "balloon.disk_caches":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsDiskCachesBytesDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)*1024),
+				promLabels...)
+		case "balloon.hugetlb_pgalloc":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsHugeTLBPageAllocTotalDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)),
+				promLabels...)
+		case "balloon.hugetlb_pgfail":
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainMemoryStatsHugeTLBPageFailTotalDesc,
+				prometheus.GaugeValue,
+				float64(param.Value.I.(uint64)),
+				promLabels...)
 		case "balloon.rss":
 			ch <- prometheus.MustNewConstMetric(
 				libvirtDomainMemoryStatsRssBytesDesc,
 				prometheus.GaugeValue,
 				float64(param.Value.I.(uint64)*1024),
-				promLabels...)
-		case "balloon.current":
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatsCurrentBalloonBytesDesc,
-				prometheus.GaugeValue,
-				float64(param.Value.I.(uint64)*1024),
-				promLabels...)
-		case "balloon.major_fault":
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatsMajorFaultTotalDesc,
-				prometheus.CounterValue,
-				float64(param.Value.I.(uint64)),
-				promLabels...)
-		case "balloon.minor_fault":
-			ch <- prometheus.MustNewConstMetric(
-				libvirtDomainMemoryStatsMinorFaultTotalDesc,
-				prometheus.CounterValue,
-				float64(param.Value.I.(uint64)),
 				promLabels...)
 		}
 	}
@@ -1317,15 +1372,20 @@ func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- libvirtDomainJobFileRemainingDesc
 
 	//domain mem stat
+	ch <- libvirtDomainMemoryStatsCurrentBalloonBytesDesc
+	ch <- libvirtDomainMemoryStatsMaximumBytesDesc
 	ch <- libvirtDomainMemoryStatsSwapInBytesDesc
 	ch <- libvirtDomainMemoryStatsSwapOutBytesDesc
+	ch <- libvirtDomainMemoryStatsMajorFaultTotalDesc
+	ch <- libvirtDomainMemoryStatsMinorFaultTotalDesc
 	ch <- libvirtDomainMemoryStatsUnusedBytesDesc
 	ch <- libvirtDomainMemoryStatsAvailableInBytesDesc
 	ch <- libvirtDomainMemoryStatsUsableBytesDesc
+	ch <- libvirtDomainMemoryStatsLastUpdateDesc
+	ch <- libvirtDomainMemoryStatsDiskCachesBytesDesc
+	ch <- libvirtDomainMemoryStatsHugeTLBPageAllocTotalDesc
+	ch <- libvirtDomainMemoryStatsHugeTLBPageFailTotalDesc
 	ch <- libvirtDomainMemoryStatsRssBytesDesc
-	ch <- libvirtDomainMemoryStatsCurrentBalloonBytesDesc
-	ch <- libvirtDomainMemoryStatsMajorFaultTotalDesc
-	ch <- libvirtDomainMemoryStatsMinorFaultTotalDesc
 
 	//domain vcpu stats
 	ch <- libvirtDomainVCPUStatsCurrent
