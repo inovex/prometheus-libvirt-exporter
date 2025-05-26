@@ -53,6 +53,11 @@ This release provides a set of assets for the prometheus-libvirt-exporter. It in
 | libvirt_domain_memory_stats_current_balloon_bytes     | "domain"                                                                                                                                      | Current balloon value (in bytes)                                                                                                                                                         |
 | libvirt_domain_memory_stats_major_fault_total         | "domain"                                                                                                                                      | Page faults occur when a process makes a valid access to virtual memory that is not available. When servicing the page fault, if disk IO is required, it is considered a major fault     |
 | libvirt_domain_memory_stats_minor_fault_total         | "domain"                                                                                                                                      | Page faults occur when a process makes a valid access to virtual memory that is not available. When servicing the page not fault, if disk IO is required, it is considered a minor fault |
+| libvirt_domain_memory_stats_disk_caches_bytes | "domain"                                                                                                                                      | The amount of memory that can be reclaimed without additional I/O, typically disk |
+| libvirt_domain_memory_stats_hugetlb_pgalloc_total | "domain"                                                                                                                                      | The number of successful huge page allocations from inside the domain via virtio balloon |
+| libvirt_domain_memory_stats_hugetlb_pgfail_total  | "domain"                                                                                                                                      | The number of failed huge page allocations from inside the domain via virtio balloon |
+| libvirt_domain_memory_stats_last_update_timestamp_seconds | "domain"                                                                                                                                      | Last time the memory stats were updated for this domain, in seconds since epoch |
+| libvirt_domain_memory_stats_maximum_bytes       | "domain"                                                                                                                                      | Maximum memory used by the domain (the maximum amount of memory that can be used by the domain) |
 | libvirt_domain_block_stats_read_bytes_total           | "domain", "target_device", "host"                                                                                                             | Number of bytes read from a block device, in bytes                                                                                                                                       |
 | libvirt_domain_block_stats_read_requests_total        | "domain", "target_device", "host"                                                                                                             | Number of read requests from a block device                                                                                                                                              |
 | libvirt_domain_block_stats_write_bytes_total          | "domain", "target_device"                                                                                                                     | Number of bytes written from a block device, in bytes                                                                                                                                    |
@@ -133,6 +138,16 @@ libvirt_domain_memory_stats_current_balloon_bytes{domain="instance-00000337"} 8.
 libvirt_domain_memory_stats_major_fault_total{domain="instance-00000337"} 3.34448e+06
 libvirt_domain_memory_stats_minor_fault_total{domain="instance-00000337"} 5.6630255354e+10
 libvirt_domain_memory_stats_used_percent{domain="instance-00000337"} 72.84790881786736
+libvirt_domain_memory_stats_disk_caches_bytes{domain="domaintest1"} 5.0110464e+07
+libvirt_domain_memory_stats_disk_caches_bytes{domain="domaintest2"} 6.3537152e+07
+libvirt_domain_memory_stats_hugetlb_pgalloc_total{domain="domaintest1"} 0
+libvirt_domain_memory_stats_hugetlb_pgalloc_total{domain="domaintest2"} 0
+libvirt_domain_memory_stats_hugetlb_pgfail_total{domain="domaintest1"} 0
+libvirt_domain_memory_stats_hugetlb_pgfail_total{domain="domaintest2"} 0
+libvirt_domain_memory_stats_last_update_timestamp_seconds{domain="domaintest1"} 1.748270127e+09
+libvirt_domain_memory_stats_last_update_timestamp_seconds{domain="domaintest2"} 1.74827013e+09
+libvirt_domain_memory_stats_maximum_bytes{domain="domaintest1"} 1.073741824e+09
+libvirt_domain_memory_stats_maximum_bytes{domain="domaintest2"} 4.294967296e+09
 libvirt_domain_openstack_info{domain="instance-0001e06e",flavor_name="z1.4xlarge",instance_id="a12423b02-4a36-4530-bf25-acb8ba80b1b1",instance_name="openstackInstanceName",project_id="hghngfhbf45435352353623gvfegt352",project_name="openstackProjectName",user_id="",user_name="openstackUserName"} 1
 libvirt_domain_vcpu_current{domain="instance-00000131"} 2
 libvirt_domain_vcpu_delay_seconds_total{domain="instance-00000131",vcpu="0"} 6309719178
