@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"time"
+	"sync"
 
 	"log/slog"
 
@@ -425,6 +426,7 @@ type LibvirtExporter struct {
 	logger *slog.Logger
 
 	timeout time.Duration
+	maxConcurrentCollects int
 }
 
 // DomainStatsRecord is a struct to hold the domain stats record.
@@ -434,12 +436,13 @@ type DomainStatsRecord struct {
 }
 
 // NewLibvirtExporter creates a new Prometheus exporter for libvirt.
-func NewLibvirtExporter(uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration) (*LibvirtExporter, error) {
+func NewLibvirtExporter(uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration, maxConcurrentCollects int) (*LibvirtExporter, error) {
 	return &LibvirtExporter{
-		uri:     uri,
-		driver:  driver,
-		logger:  logger,
-		timeout: timeout,
+		uri:                 uri,
+		driver:              driver,
+		logger:              logger,
+		timeout:             timeout,
+		maxConcurrentCollects: maxConcurrentCollects,
 	}, nil
 }
 
@@ -487,17 +490,23 @@ func DomainsFromLibvirt(l *libvirt.Libvirt, logger *slog.Logger) ([]domainMeta, 
 
 // Collect scrapes Prometheus metrics from libvirt.
 func (e *LibvirtExporter) Collect(ch chan<- prometheus.Metric) {
-	if err := CollectFromLibvirt(ch, e.uri, e.driver, e.logger, e.timeout); err != nil {
+	if err := CollectFromLibvirt(ch, e.uri, e.driver, e.logger, e.timeout, e.maxConcurrentCollects); err != nil {
 		e.logger.Error("failed to collect metrics", "msg", err)
 	}
 }
 
 // CollectFromLibvirt obtains Prometheus metrics from all domains in a libvirt setup.
-func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration) (err error) {
+func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration, maxConcurrentCollects int) (err error) {
+	var (
+		wg sync.WaitGroup 
+		pools []libvirt.StoragePool
+	)
+	
 	dialer := dialers.NewLocal(dialers.WithSocket(uri), dialers.WithLocalTimeout(5*time.Second))
 	l := libvirt.NewWithDialer(dialer)
 	if err = l.ConnectToURI(driver); err != nil {
 		logger.Error("failed to connect", "msg", err)
+		// if we cannot connect to libvirt, we set the up metric to 0
 		ch <- prometheus.MustNewConstMetric(
 			libvirtUpDesc,
 			prometheus.GaugeValue,
@@ -511,56 +520,85 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 		}
 	}()
 
+	// if we can connect to libvirt, we set the up metric to 1
 	ch <- prometheus.MustNewConstMetric(
 		libvirtUpDesc,
 		prometheus.GaugeValue,
 		1.0)
 
+	// get all domains
+	// see https://libvirt.org/html/libvirt-libvirt-domain.html
 	domains, err := DomainsFromLibvirt(l, logger)
 	if err != nil {
 		logger.Error("failed to retrieve domains from Libvirt", "msg", err)
 		return err
 	}
 
+	// set the number of domains metric
 	domainNumber := len(domains)
 	ch <- prometheus.MustNewConstMetric(
 		libvirtDomainNumbers,
 		prometheus.GaugeValue,
 		float64(domainNumber))
 
-	// collect domain metrics from libvirt
-	// see https://libvirt.org/html/libvirt-libvirt-domain.html
-	for _, domain := range domains {
-		if err, hasTimedOut := CollectDomain(ch, l, domain, logger, timeout); err != nil {
-			logger.Error("failed to collect domain", "domain", domain.domainName, "msg", err)
-			if hasTimedOut {
-				ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(1), domain.domainName)
-				logger.Error("call to CollectDomain has timed out", "domain", domain.domainName)
-				continue
-			}
-		}
-		ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(0), domain.domainName)
-	}
-
-	// collect storage pool metrics
+	// get all storage pools
 	// see https://libvirt.org/html/libvirt-libvirt-storage.html
-	var pools []libvirt.StoragePool
 	if pools, _, err = l.ConnectListAllStoragePools(1, 0); err != nil {
 		logger.Error("failed to collect storage pools", "msg", err)
 		return err
 	}
 
+	// create a buffered channel for domains and pools
+	domainChan := make(chan domainMeta, len(domains))
+	poolChan := make(chan libvirt.StoragePool, len(pools))
+
+	for _, domain := range domains {
+		domainChan <- domain
+	}
+
 	for _, pool := range pools {
-		if err, hasTimedOut := CollectStoragePoolInfo(ch, l, pool, logger, timeout); err != nil {
-			logger.Error("failed to collect storage pool info", "pool", pool.Name, "msg", err)
-			if hasTimedOut {
-				logger.Error("call to CollectStoragePoolInfo has timed out", "pool", pool.Name)
-				ch <- prometheus.MustNewConstMetric(libvirtPoolTimedOutDesc, prometheus.GaugeValue, float64(1), pool.Name)
-				continue
+		poolChan <- pool
+	}
+
+	// worker function to process domains and pools concurrently
+	worker := func() {
+		defer wg.Done()
+		for {
+			select {
+			case domain := <-domainChan:
+				if err, hasTimedOut := CollectDomain(ch, l, domain, logger, timeout); err != nil {
+					logger.Error("failed to collect domain", "domain", domain.domainName, "msg", err)
+					if hasTimedOut {
+						ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(1), domain.domainName)
+						logger.Error("call to CollectDomain has timed out", "domain", domain.domainName)
+					}
+				} else {
+					ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(0), domain.domainName)
+				}
+			case pool := <-poolChan:
+				if err, hasTimedOut := CollectStoragePoolInfo(ch, l, pool, logger, timeout); err != nil {
+					logger.Error("failed to collect storage pool", "pool", pool.Name, "msg", err)
+					if hasTimedOut {
+						logger.Error("call to CollectStoragePool has timed out", "pool", pool.Name)
+						ch <- prometheus.MustNewConstMetric(libvirtPoolTimedOutDesc, prometheus.GaugeValue, float64(1), pool.Name)
+					}
+				} else {
+					ch <- prometheus.MustNewConstMetric(libvirtPoolTimedOutDesc, prometheus.GaugeValue, float64(0), pool.Name)
+				}
+			default:
+				return // no more domains or pool to process
 			}
 		}
-		ch <- prometheus.MustNewConstMetric(libvirtPoolTimedOutDesc, prometheus.GaugeValue, float64(0), pool.Name)
 	}
+
+	// start workers to process domains and pools concurrently
+	wg.Add(maxConcurrentCollects)
+	for i := 0; i < maxConcurrentCollects; i++ {
+		go worker()
+	}
+
+	// wait for all workers to finish
+	wg.Wait()
 
 	return nil
 }
