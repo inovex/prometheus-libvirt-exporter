@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"regexp"
 	"time"
+	"sync"
 
 	"log/slog"
 
@@ -394,6 +395,8 @@ var (
 	intNameRegex            = regexp.MustCompile(`net\.(\d+)\.name`)
 	intMetricsRegex         = regexp.MustCompile(`net\.(\d+)\.(rx|tx)\.(\w+)`)
 	intMetricRegexTemplate  = `net\.%s\.(.+)`
+
+	wg sync.WaitGroup
 )
 
 type collectFunc func(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool)
@@ -425,6 +428,7 @@ type LibvirtExporter struct {
 	logger *slog.Logger
 
 	timeout time.Duration
+	maxConcurrentCollects int
 }
 
 // DomainStatsRecord is a struct to hold the domain stats record.
@@ -434,12 +438,13 @@ type DomainStatsRecord struct {
 }
 
 // NewLibvirtExporter creates a new Prometheus exporter for libvirt.
-func NewLibvirtExporter(uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration) (*LibvirtExporter, error) {
+func NewLibvirtExporter(uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration, maxConcurrentCollects int) (*LibvirtExporter, error) {
 	return &LibvirtExporter{
-		uri:     uri,
-		driver:  driver,
-		logger:  logger,
-		timeout: timeout,
+		uri:                 uri,
+		driver:              driver,
+		logger:              logger,
+		timeout:             timeout,
+		maxConcurrentCollects: maxConcurrentCollects,
 	}, nil
 }
 
@@ -487,13 +492,13 @@ func DomainsFromLibvirt(l *libvirt.Libvirt, logger *slog.Logger) ([]domainMeta, 
 
 // Collect scrapes Prometheus metrics from libvirt.
 func (e *LibvirtExporter) Collect(ch chan<- prometheus.Metric) {
-	if err := CollectFromLibvirt(ch, e.uri, e.driver, e.logger, e.timeout); err != nil {
+	if err := CollectFromLibvirt(ch, e.uri, e.driver, e.logger, e.timeout, e.maxConcurrentCollects); err != nil {
 		e.logger.Error("failed to collect metrics", "msg", err)
 	}
 }
 
 // CollectFromLibvirt obtains Prometheus metrics from all domains in a libvirt setup.
-func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration) (err error) {
+func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration, maxConcurrentCollects int) (err error) {
 	dialer := dialers.NewLocal(dialers.WithSocket(uri), dialers.WithLocalTimeout(5*time.Second))
 	l := libvirt.NewWithDialer(dialer)
 	if err = l.ConnectToURI(driver); err != nil {
@@ -528,19 +533,29 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 		prometheus.GaugeValue,
 		float64(domainNumber))
 
+	// semaphore to limit concurrent collects to maxConcurrentCollects value
+	sem := make(chan struct{}, maxConcurrentCollects)	
+
 	// collect domain metrics from libvirt
 	// see https://libvirt.org/html/libvirt-libvirt-domain.html
 	for _, domain := range domains {
-		if err, hasTimedOut := CollectDomain(ch, l, domain, logger, timeout); err != nil {
-			logger.Error("failed to collect domain", "domain", domain.domainName, "msg", err)
-			if hasTimedOut {
-				ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(1), domain.domainName)
-				logger.Error("call to CollectDomain has timed out", "domain", domain.domainName)
-				continue
+		sem <- struct{}{} // acquire a semaphore slot
+		wg.Add(1)
+		go func(domain domainMeta) {
+			defer wg.Done()
+			if err, hasTimedOut := CollectDomain(ch, l, domain, logger, timeout); err != nil {
+				logger.Error("failed to collect domain", "domain", domain.domainName, "msg", err)
+				if hasTimedOut {
+					ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(1), domain.domainName)
+					logger.Error("call to CollectDomain has timed out", "domain", domain.domainName)
+					return
+				}
 			}
-		}
-		ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(0), domain.domainName)
+			<-sem // release the semaphore slot
+			ch <- prometheus.MustNewConstMetric(libvirtDomainTimedOutDesc, prometheus.GaugeValue, float64(0), domain.domainName)
+		}(domain)
 	}
+	wg.Wait()
 
 	// collect storage pool metrics
 	// see https://libvirt.org/html/libvirt-libvirt-storage.html
@@ -551,16 +566,23 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 	}
 
 	for _, pool := range pools {
-		if err, hasTimedOut := CollectStoragePoolInfo(ch, l, pool, logger, timeout); err != nil {
-			logger.Error("failed to collect storage pool info", "pool", pool.Name, "msg", err)
-			if hasTimedOut {
-				logger.Error("call to CollectStoragePoolInfo has timed out", "pool", pool.Name)
-				ch <- prometheus.MustNewConstMetric(libvirtPoolTimedOutDesc, prometheus.GaugeValue, float64(1), pool.Name)
-				continue
+		sem <- struct{}{} // acquire a semaphore slot
+		wg.Add(1)		
+		go func(pool libvirt.StoragePool) {
+			defer wg.Done()
+			if err, hasTimedOut := CollectStoragePoolInfo(ch, l, pool, logger, timeout); err != nil {
+				logger.Error("failed to collect storage pool", "pool", pool.Name, "msg", err)
+				if hasTimedOut {
+					logger.Error("call to CollectStoragePool has timed out", "pool", pool.Name)
+					ch <- prometheus.MustNewConstMetric(libvirtPoolTimedOutDesc, prometheus.GaugeValue, float64(1), pool.Name)
+					return
+				}
 			}
-		}
-		ch <- prometheus.MustNewConstMetric(libvirtPoolTimedOutDesc, prometheus.GaugeValue, float64(0), pool.Name)
+			<-sem // release the semaphore slot
+			ch <- prometheus.MustNewConstMetric(libvirtPoolTimedOutDesc, prometheus.GaugeValue, float64(0), pool.Name)
+		}(pool)
 	}
+	wg.Wait()
 
 	return nil
 }
