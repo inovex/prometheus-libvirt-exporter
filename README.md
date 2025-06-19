@@ -8,6 +8,74 @@ By default, this exporter listens on TCP port 9177, path '/metrics', to expose m
 
 This exporter is built upon the [go-libvirt](https://github.com/digitalocean/go-libvirt) package developed by DigitalOcean. It offers a pure Go interface for interacting with Libvirt, leveraging the RPC interface provided by Libvirt. For detailed information about the Go bindings used, you can refer to the [Libvirt API reference](https://libvirt.org/html/index.html).
 
+## Usage
+
+### Running the Exporter
+
+You can run the exporter as a standalone binary or as a systemd service.
+
+#### Standalone
+
+Build the exporter (see [Building and running](#building-and-running)), then run:
+
+```sh
+./prometheus-libvirt-exporter
+```
+
+By default, the exporter listens on port `9177` and exposes metrics at `/metrics`.
+
+#### With systemd
+
+A sample systemd service file is provided at [contrib/prometheus-libvirt-exporter.service](contrib/prometheus-libvirt-exporter.service). To install:
+
+```sh
+sudo cp contrib/prometheus-libvirt-exporter.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now prometheus-libvirt-exporter
+```
+
+### Configuration
+
+You can configure the exporter using command-line flags:
+
+- `--libvirt.uri`  
+  Libvirt URI from which to extract metrics.  
+  Default: `/var/run/libvirt/libvirt-sock-ro`
+
+- `--libvirt.driver`  
+  Libvirt driver to use.  
+  Default: `qemu:///system`
+
+- `--exporter.timeout`  
+  Maximum libvirt API call duration (e.g., `3s`).  
+  Default: `3s`
+
+- `--exporter.max-concurrent-collects`  
+  Maximum number of concurrent collects (min: 1).  
+  Adapt libvirtd `max_client_requests` according to the value chosen here  
+  Default: `4`
+
+- `--web.telemetry-path`  
+  Path under which to expose metrics.  
+  Default: `/metrics`
+
+For a full list of options, run:
+
+```sh
+./prometheus-libvirt-exporter --help
+```
+
+### Prometheus Configuration
+
+Add a scrape job to your Prometheus configuration:
+
+```yaml
+scrape_configs:
+  - job_name: 'libvirt'
+    static_configs:
+      - targets: ['localhost:9177']
+```
+
 ## Building and running
 
 This release provides a set of assets for the prometheus-libvirt-exporter. It includes installation packages for various platforms (apk, deb, rpm) and the the binaries. Additionally, source code archives in both zip and tar.gz formats are available for download.
@@ -23,10 +91,6 @@ This release provides a set of assets for the prometheus-libvirt-exporter. It in
 1. Run `task build`
 
 2. Afterwards all packages, binaries and archives are available in the `dist/` folder
-
-### To see all available configuration flags
-
-`./prometheus-libvirt-exporter -h`
 
 ### metrics
 
