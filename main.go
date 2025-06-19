@@ -33,6 +33,9 @@ func main() {
 		timeout = kingpin.Flag("exporter.timeout",
 			"Maximum libvirt API call duration.",
 		).Default("3s").Duration()
+		maxConcurrentCollects = kingpin.Flag("exporter.max-concurrent-collects",
+			"Maximum number of concurrent collects (min: 1).",
+		).Default("4").Int()
 	)
 
 	metricsPath := kingpin.Flag(
@@ -47,11 +50,18 @@ func main() {
 	kingpin.Parse()
 	logger := promslog.New(promlogConfig)
 
+	// ensure maxConcurrentCollects is not less than 1
+	if *maxConcurrentCollects < 1 {
+		logger.Info("max-concurrent-collects must be at least 1, setting to 1")
+		*maxConcurrentCollects = 1
+	}
+
 	logger.Info("Starting libvirt_exporter", "version", prometheus_version.Info())
 	logger.Info("Build context", "build_context", prometheus_version.BuildContext())
 	logger.Info("Timeout value", "timeout_value", *timeout)
+	logger.Info("Max concurrent collects", "max_concurrent_collects", *maxConcurrentCollects)
 
-	exporter, err := exporter.NewLibvirtExporter(*libvirtURI, libvirt.ConnectURI(*driver), logger, *timeout)
+	exporter, err := exporter.NewLibvirtExporter(*libvirtURI, libvirt.ConnectURI(*driver), logger, *timeout, *maxConcurrentCollects)
 	if err != nil {
 		panic(err)
 	}
