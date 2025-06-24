@@ -1,3 +1,5 @@
+version: 2
+
 project_name: prometheus-libvirt-exporter
 before:
   hooks:
@@ -9,6 +11,8 @@ builds:
     dir: .
     main: ./main.go
     binary: prometheus-libvirt-exporter
+    env:
+      - CGO_ENABLED=0 # build a static binary without C dependencies
     flags:
       - -tags=netgo
       - -v
