@@ -609,34 +609,11 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 		rState                     uint8
 		rvirCpu                    uint16
 		rmaxmem, rmemory, rcputime uint64
+		domainInfoAvailable        bool = true
 	)
-	type rDomainStatsState struct {
-		rState                     uint8
-		rvirCpu                    uint16
-		rmaxmem, rmemory, rcputime uint64
-		err                        error
-	}
 
-	chDomainStats := make(chan rDomainStatsState, 1)
-	go func() {
-		var data rDomainStatsState
-		data.rState, data.rmaxmem, data.rmemory, data.rvirCpu, data.rcputime, data.err = l.DomainGetInfo(domain.libvirtDomain)
-		chDomainStats <- data
-	}()
-
-	select {
-	case res := <-chDomainStats:
-		if res.err != nil {
-			return res.err, false
-		}
-
-		rState = res.rState
-		rvirCpu = res.rvirCpu
-		rmaxmem = res.rmaxmem
-		rmemory = res.rmemory
-		rcputime = res.rcputime
-	case <-time.After(time.Duration(timeout) * time.Second):
-		return fmt.Errorf("call to DomainGetInfo has timed out"), true
+	promLabels := []string{
+		domain.domainName,
 	}
 
 	openstackInfoLabels := []string{
@@ -657,19 +634,79 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 		domain.os_type_machine,
 	}
 
-	promLabels := []string{
-		domain.domainName,
-	}
-
+	// Always emit these info metrics for all domains, regardless of state
 	ch <- prometheus.MustNewConstMetric(libvirtDomainInfoDesc, prometheus.GaugeValue, 1.0, infoLabels...)
 	ch <- prometheus.MustNewConstMetric(libvirtDomainOpenstackInfoDesc, prometheus.GaugeValue, 1.0, openstackInfoLabels...)
 
+	// Try to get domain info, but don't fail completely if it doesn't work
+	type rDomainStatsState struct {
+		rState                     uint8
+		rvirCpu                    uint16
+		rmaxmem, rmemory, rcputime uint64
+		err                        error
+	}
+
+	chDomainStats := make(chan rDomainStatsState, 1)
+	go func() {
+		var data rDomainStatsState
+		data.rState, data.rmaxmem, data.rmemory, data.rvirCpu, data.rcputime, data.err = l.DomainGetInfo(domain.libvirtDomain)
+		chDomainStats <- data
+	}()
+
+	select {
+	case res := <-chDomainStats:
+		if res.err != nil {
+			logger.Debug("DomainGetInfo failed, will attempt to get domain state separately", "domain", domain.domainName, "error", res.err)
+			domainInfoAvailable = false
+		} else {
+			rState = res.rState
+			rvirCpu = res.rvirCpu
+			rmaxmem = res.rmaxmem
+			rmemory = res.rmemory
+			rcputime = res.rcputime
+		}
+	case <-time.After(time.Duration(timeout) * time.Second):
+		logger.Debug("DomainGetInfo timed out, will attempt to get domain state separately", "domain", domain.domainName)
+		domainInfoAvailable = false
+	}
+
+	// If DomainGetInfo failed, try to get just the domain state
+	if !domainInfoAvailable {
+		type rDomainState struct {
+			state int32
+			err   error
+		}
+		chDomainState := make(chan rDomainState, 1)
+		go func() {
+			var data rDomainState
+			var reason int32
+			data.state, reason, data.err = l.DomainGetState(domain.libvirtDomain, 0)
+			_ = reason // ignore reason for now
+			chDomainState <- data
+		}()
+
+		select {
+		case res := <-chDomainState:
+			if res.err != nil {
+				logger.Error("failed to get domain state", "domain", domain.domainName, "error", res.err)
+				return res.err, false
+			}
+			rState = uint8(res.state)
+		case <-time.After(time.Duration(timeout) * time.Second):
+			return fmt.Errorf("call to DomainGetState has timed out"), true
+		}
+	}
+
+	// Always emit domain state - this is the key metric for all domains
 	ch <- prometheus.MustNewConstMetric(libvirtDomainState, prometheus.GaugeValue, float64(rState), append(promLabels, domainState[libvirt_schema.DomainState(rState)])...)
 
-	ch <- prometheus.MustNewConstMetric(libvirtDomainInfoMaxMemDesc, prometheus.GaugeValue, float64(rmaxmem)*1024, promLabels...)
-	ch <- prometheus.MustNewConstMetric(libvirtDomainInfoMemoryDesc, prometheus.GaugeValue, float64(rmemory)*1024, promLabels...)
-	ch <- prometheus.MustNewConstMetric(libvirtDomainInfoNrVirtCpuDesc, prometheus.GaugeValue, float64(rvirCpu), promLabels...)
-	ch <- prometheus.MustNewConstMetric(libvirtDomainInfoCpuTimeDesc, prometheus.CounterValue, float64(rcputime)/1e9, promLabels...)
+	// Only emit detailed domain info metrics if DomainGetInfo succeeded
+	if domainInfoAvailable {
+		ch <- prometheus.MustNewConstMetric(libvirtDomainInfoMaxMemDesc, prometheus.GaugeValue, float64(rmaxmem)*1024, promLabels...)
+		ch <- prometheus.MustNewConstMetric(libvirtDomainInfoMemoryDesc, prometheus.GaugeValue, float64(rmemory)*1024, promLabels...)
+		ch <- prometheus.MustNewConstMetric(libvirtDomainInfoNrVirtCpuDesc, prometheus.GaugeValue, float64(rvirCpu), promLabels...)
+		ch <- prometheus.MustNewConstMetric(libvirtDomainInfoCpuTimeDesc, prometheus.CounterValue, float64(rcputime)/1e9, promLabels...)
+	}
 
 	var isActive int32
 	if isActive, err = l.DomainIsActive(domain.libvirtDomain); err != nil {
