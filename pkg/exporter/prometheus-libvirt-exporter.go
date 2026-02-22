@@ -1104,7 +1104,7 @@ func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domai
 func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
 	var data []libvirt.DomainStatsRecord
 
-	chRes := make(chan DomainStatsRecord)
+	chRes := make(chan DomainStatsRecord, 1)
 
 	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsBalloon, chRes)
 
