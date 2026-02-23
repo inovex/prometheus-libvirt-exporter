@@ -635,7 +635,7 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 		rmaxmem = res.rmaxmem
 		rmemory = res.rmemory
 		rcputime = res.rcputime
-	case <-timeoutAfter(timeout):
+	case <-time.After(timeout):
 		return fmt.Errorf("call to DomainGetInfo has timed out"), true
 	}
 
@@ -726,10 +726,6 @@ func connectGetAllDomainStats(l *libvirt.Libvirt, domain domainMeta, flag libvir
 	chRes <- data
 }
 
-func timeoutAfter(timeout time.Duration) <-chan time.Time {
-	return time.After(timeout)
-}
-
 func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
 	var data []libvirt.DomainStatsRecord
 
@@ -742,7 +738,7 @@ func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libv
 			return res.err, false
 		}
 		data = res.DomainStatsRecord
-	case <-timeoutAfter(timeout):
+	case <-time.After(timeout):
 		return fmt.Errorf("call to ConnectGetAllDomainStats with DomainStatsBlock flag has timed out"), true
 	}
 
@@ -792,7 +788,7 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 			return res.err, false
 		}
 		data = res.DomainStatsRecord
-	case <-timeoutAfter(timeout):
+	case <-time.After(timeout):
 		return fmt.Errorf("call to ConnectGetAllDomainStats with DomainStatsBlock flag has timed out"), true
 	}
 
@@ -885,7 +881,7 @@ func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, d
 			return res.err, false
 		}
 		data = res.DomainStatsRecord
-	case <-timeoutAfter(timeout):
+	case <-time.After(timeout):
 		return fmt.Errorf("call to ConnectGetAllDomainStats with DomainStatsInterface flag has timed out"), true
 	}
 
@@ -1037,7 +1033,7 @@ func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domai
 		rFileTotal = res.rFileTotal
 		rFileProcessed = res.rFileProcessed
 		rFileRemaining = res.rFileRemaining
-	case <-timeoutAfter(timeout):
+	case <-time.After(timeout):
 		return fmt.Errorf("call to DomainGetJobInfo has timed out"), true
 	}
 
@@ -1118,7 +1114,7 @@ func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt
 			return res.err, false
 		}
 		data = res.DomainStatsRecord
-	case <-timeoutAfter(timeout):
+	case <-time.After(timeout):
 		return fmt.Errorf("call to ConnectGetAllDomainStats with DomainStatsBalloon flag has timed out"), true
 	}
 
@@ -1236,7 +1232,7 @@ func CollectDomainVCPUInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, doma
 			return res.err, false
 		}
 		data = res.DomainStatsRecord
-	case <-timeoutAfter(timeout):
+	case <-time.After(timeout):
 		return fmt.Errorf("call to ConnectGetAllDomainStats with DomainStatsVCPU flag has timed out"), true
 	}
 
@@ -1330,7 +1326,7 @@ func CollectStoragePoolInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, poo
 		pCapacity = res.pCapacity
 		pAllocation = res.pAllocation
 		pAvailable = res.pAvailable
-	case <-timeoutAfter(timeout):
+	case <-time.After(timeout):
 		return fmt.Errorf("call to StoragePoolGetInfo has timed out"), true
 	}
 
