@@ -4,8 +4,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"regexp"
-	"time"
 	"sync"
+	"time"
 
 	"log/slog"
 
@@ -425,7 +425,7 @@ type LibvirtExporter struct {
 
 	logger *slog.Logger
 
-	timeout time.Duration
+	timeout               time.Duration
 	maxConcurrentCollects int
 }
 
@@ -438,10 +438,10 @@ type DomainStatsRecord struct {
 // NewLibvirtExporter creates a new Prometheus exporter for libvirt.
 func NewLibvirtExporter(uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration, maxConcurrentCollects int) (*LibvirtExporter, error) {
 	return &LibvirtExporter{
-		uri:                 uri,
-		driver:              driver,
-		logger:              logger,
-		timeout:             timeout,
+		uri:                   uri,
+		driver:                driver,
+		logger:                logger,
+		timeout:               timeout,
 		maxConcurrentCollects: maxConcurrentCollects,
 	}, nil
 }
@@ -498,10 +498,10 @@ func (e *LibvirtExporter) Collect(ch chan<- prometheus.Metric) {
 // CollectFromLibvirt obtains Prometheus metrics from all domains in a libvirt setup.
 func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.ConnectURI, logger *slog.Logger, timeout time.Duration, maxConcurrentCollects int) (err error) {
 	var (
-		wg sync.WaitGroup 
+		wg    sync.WaitGroup
 		pools []libvirt.StoragePool
 	)
-	
+
 	dialer := dialers.NewLocal(dialers.WithSocket(uri), dialers.WithLocalTimeout(5*time.Second))
 	l := libvirt.NewWithDialer(dialer)
 	if err = l.ConnectToURI(driver); err != nil {
@@ -593,7 +593,7 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 
 	// start workers to process domains and pools concurrently
 	wg.Add(maxConcurrentCollects)
-	for i := 0; i < maxConcurrentCollects; i++ {
+	for range maxConcurrentCollects {
 		go worker()
 	}
 
@@ -1104,7 +1104,7 @@ func CollectDomainJobInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domai
 func CollectDomainMemoryStatInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domainMeta, promLabels []string, logger *slog.Logger, timeout time.Duration) (err error, hasTimedOut bool) {
 	var data []libvirt.DomainStatsRecord
 
-	chRes := make(chan DomainStatsRecord)
+	chRes := make(chan DomainStatsRecord, 1)
 
 	go connectGetAllDomainStats(l, domain, libvirt.DomainStatsBalloon, chRes)
 
