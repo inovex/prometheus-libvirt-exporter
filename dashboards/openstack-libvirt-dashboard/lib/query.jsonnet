@@ -28,47 +28,47 @@ local g = import 'github.com/grafana/grafonnet/gen/grafonnet-v11.4.0/main.libson
 
   storage_iops_total: g.query.prometheus.new(
     '${datasource}',
-    'rate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_(read|write)_requests_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n)'
+    'sum by (domain, target_device) (\n  rate(libvirt_domain_block_stats_read_requests_total{domain="$dom_id"}[$__rate_interval])\n  +\n  rate(libvirt_domain_block_stats_write_requests_total{domain="$dom_id"}[$__rate_interval])\n) '
   ) + g.query.prometheus.withLegendFormat('{{target_device}}'),
 
   storage_iops_read: g.query.prometheus.new(
     '${datasource}',
-    'rate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_read_requests_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n)'
+    'sum by (domain, target_device) (\n  rate({__name__=~"libvirt_domain_block_stats_read_requests_total", domain="$dom_id"}[$__rate_interval])\n) '
   ) + g.query.prometheus.withLegendFormat('{{target_device}}'),
 
   storage_iops_write: g.query.prometheus.new(
     '${datasource}',
-    'rate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_write_requests_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n)'
+    'sum by (domain, target_device) (\n  rate({__name__=~"libvirt_domain_block_stats_write_requests_total", domain="$dom_id"}[$__rate_interval])\n) '
   ) + g.query.prometheus.withLegendFormat('{{target_device}}'),
 
   storage_throughput_total: g.query.prometheus.new(
     '${datasource}',
-    'rate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_(read|write)_bytes_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n)'
+    'sum by (domain, target_device) (\n  rate(libvirt_domain_block_stats_read_bytes_total{domain="$dom_id"}[$__rate_interval])\n  +\n  rate(libvirt_domain_block_stats_write_bytes_total{domain="$dom_id"}[$__rate_interval])\n) '
   ) + g.query.prometheus.withLegendFormat('{{target_device}}'),
 
   storage_throughput_read: g.query.prometheus.new(
     '${datasource}',
-    'rate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_read_bytes_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n)'
+    'sum by (domain, target_device) (\n  rate({__name__=~"libvirt_domain_block_stats_read_bytes_total", domain="$dom_id"}[$__rate_interval])\n) '
   ) + g.query.prometheus.withLegendFormat('{{target_device}}'),
 
   storage_throughput_write: g.query.prometheus.new(
     '${datasource}',
-    'rate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_write_bytes_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n)'
+    'sum by (domain, target_device) (\n  rate({__name__=~"libvirt_domain_block_stats_write_bytes_total", domain="$dom_id"}[$__rate_interval])\n) '
   ) + g.query.prometheus.withLegendFormat('{{target_device}}'),
 
   storage_latency_read: g.query.prometheus.new(
     '${datasource}',
-    'rate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_read_time_seconds_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n)\n/\nrate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_read_requests_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n) * 1000'
+    '(\n  sum by (domain, target_device) (\n    rate({__name__=~"libvirt_domain_block_stats_read_time_seconds_total", domain="$dom_id"}[$__rate_interval])\n  )\n  /\n  sum by (domain, target_device) (\n    rate({__name__=~"libvirt_domain_block_stats_read_requests_total", domain="$dom_id"}[$__rate_interval])\n  )\n) * 1000 '
   ) + g.query.prometheus.withLegendFormat('{{target_device}}'),
 
   storage_latency_write: g.query.prometheus.new(
     '${datasource}',
-    'rate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_write_time_seconds_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n)\n/\nrate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_write_requests_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n) * 1000'
+    '(\n  sum by (domain, target_device) (\n    rate({__name__=~"libvirt_domain_block_stats_write_time_seconds_total", domain="$dom_id"}[$__rate_interval])\n  )\n  /\n  sum by (domain, target_device) (\n    rate({__name__=~"libvirt_domain_block_stats_write_requests_total", domain="$dom_id"}[$__rate_interval])\n  )\n) * 1000 '
   ) + g.query.prometheus.withLegendFormat('{{target_device}}'),
 
   storage_average_block_size: g.query.prometheus.new(
     '${datasource}',
-    'rate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_(read|write)_bytes_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n)\n/\nrate(\n  sum by (domain, target_device) (\n    {__name__=~"libvirt_domain_block_stats_(read|write)_requests_total", domain="$dom_id"} > 0\n  )[$__rate_interval]\n)'
+    '(\n  sum by (domain, target_device) (\n    rate(libvirt_domain_block_stats_read_bytes_total{domain="$dom_id"}[$__rate_interval])\n    +\n    rate(libvirt_domain_block_stats_write_bytes_total{domain="$dom_id"}[$__rate_interval])\n  )\n  /\n  sum by (domain, target_device) (\n    rate(libvirt_domain_block_stats_read_requests_total{domain="$dom_id"}[$__rate_interval])\n    +\n    rate(libvirt_domain_block_stats_write_requests_total{domain="$dom_id"}[$__rate_interval])\n  )\n) '
   ) + g.query.prometheus.withLegendFormat('{{target_device}}'),
 
   newtork_throughput_total: g.query.prometheus.new(
