@@ -641,7 +641,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "rate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_(read|write)_requests_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n)",
+               "expr": "sum by (domain, target_device) (\n  rate(libvirt_domain_block_stats_read_requests_total{domain=\"$dom_id\"}[$__rate_interval])\n  +\n  rate(libvirt_domain_block_stats_write_requests_total{domain=\"$dom_id\"}[$__rate_interval])\n) ",
                "legendFormat": "{{target_device}}"
             }
          ],
@@ -683,7 +683,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "rate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_read_requests_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n)",
+               "expr": "sum by (domain, target_device) (\n  rate({__name__=~\"libvirt_domain_block_stats_read_requests_total\", domain=\"$dom_id\"}[$__rate_interval])\n) ",
                "legendFormat": "{{target_device}}"
             }
          ],
@@ -725,7 +725,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "rate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_write_requests_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n)",
+               "expr": "sum by (domain, target_device) (\n  rate({__name__=~\"libvirt_domain_block_stats_write_requests_total\", domain=\"$dom_id\"}[$__rate_interval])\n) ",
                "legendFormat": "{{target_device}}"
             }
          ],
@@ -767,7 +767,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "rate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_(read|write)_bytes_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n)",
+               "expr": "sum by (domain, target_device) (\n  rate(libvirt_domain_block_stats_read_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n  +\n  rate(libvirt_domain_block_stats_write_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n) ",
                "legendFormat": "{{target_device}}"
             }
          ],
@@ -809,7 +809,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "rate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_read_bytes_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n)",
+               "expr": "sum by (domain, target_device) (\n  rate({__name__=~\"libvirt_domain_block_stats_read_bytes_total\", domain=\"$dom_id\"}[$__rate_interval])\n) ",
                "legendFormat": "{{target_device}}"
             }
          ],
@@ -851,7 +851,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "rate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_write_bytes_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n)",
+               "expr": "sum by (domain, target_device) (\n  rate({__name__=~\"libvirt_domain_block_stats_write_bytes_total\", domain=\"$dom_id\"}[$__rate_interval])\n) ",
                "legendFormat": "{{target_device}}"
             }
          ],
@@ -919,7 +919,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "rate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_read_time_seconds_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n)\n/\nrate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_read_requests_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n) * 1000",
+               "expr": "(\n  sum by (domain, target_device) (\n    rate({__name__=~\"libvirt_domain_block_stats_read_time_seconds_total\", domain=\"$dom_id\"}[$__rate_interval])\n  )\n  /\n  sum by (domain, target_device) (\n    rate({__name__=~\"libvirt_domain_block_stats_read_requests_total\", domain=\"$dom_id\"}[$__rate_interval])\n  )\n) * 1000 ",
                "legendFormat": "{{target_device}}"
             }
          ],
@@ -987,7 +987,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "rate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_write_time_seconds_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n)\n/\nrate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_write_requests_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n) * 1000",
+               "expr": "(\n  sum by (domain, target_device) (\n    rate({__name__=~\"libvirt_domain_block_stats_write_time_seconds_total\", domain=\"$dom_id\"}[$__rate_interval])\n  )\n  /\n  sum by (domain, target_device) (\n    rate({__name__=~\"libvirt_domain_block_stats_write_requests_total\", domain=\"$dom_id\"}[$__rate_interval])\n  )\n) * 1000 ",
                "legendFormat": "{{target_device}}"
             }
          ],
@@ -1029,7 +1029,7 @@
                   "type": "prometheus",
                   "uid": "${datasource}"
                },
-               "expr": "rate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_(read|write)_bytes_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n)\n/\nrate(\n  sum by (domain, target_device) (\n    {__name__=~\"libvirt_domain_block_stats_(read|write)_requests_total\", domain=\"$dom_id\"} > 0\n  )[$__rate_interval]\n)",
+               "expr": "(\n  sum by (domain, target_device) (\n    rate(libvirt_domain_block_stats_read_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n    +\n    rate(libvirt_domain_block_stats_write_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n  )\n  /\n  sum by (domain, target_device) (\n    rate(libvirt_domain_block_stats_read_requests_total{domain=\"$dom_id\"}[$__rate_interval])\n    +\n    rate(libvirt_domain_block_stats_write_requests_total{domain=\"$dom_id\"}[$__rate_interval])\n  )\n) ",
                "legendFormat": "{{target_device}}"
             }
          ],
