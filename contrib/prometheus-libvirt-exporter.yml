@@ -1,0 +1,102 @@
+---
+# Sample manifest for deploying the prometheus-libvirt-exporter as a DaemonSet in Kubernetes.
+# The ServiceMonitor allows auto-discovery and metric scraping with the Prometheus Operator.
+# Update `image` tag to the desired version and modify `namespace` and `nodeSelector` based on cluster setup.
+#
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: prometheus-libvirt-exporter
+  namespace: my-namespace
+  labels:
+    app: prometheus-libvirt-exporter
+spec:
+  selector:
+    matchLabels:
+      app: prometheus-libvirt-exporter
+  template:
+    metadata:
+      labels:
+        app: prometheus-libvirt-exporter
+    spec:
+      nodeSelector:
+        my.label/hypervisor: "true"
+      tolerations:
+        - operator: Exists
+      containers:
+        - name: prometheus-libvirt-exporter
+          image: ghcr.io/inovex/prometheus-libvirt-exporter:2.3.2
+          command: ["usr/bin/prometheus-libvirt-exporter"]
+          args:
+            - --web.health-path=/health
+          ports:
+            - name: metrics
+              containerPort: 9177
+              protocol: TCP
+          volumeMounts:
+            - name: libvirt-sock
+              mountPath: /var/run/libvirt/libvirt-sock-ro
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 9177
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /metrics
+              port: 9177
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+      volumes:
+        - name: libvirt-sock
+          hostPath:
+            path: /var/run/libvirt/libvirt-sock-ro
+            type: Socket
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-libvirt-exporter
+  namespace: my-namespace
+  labels:
+    app: prometheus-libvirt-exporter
+spec:
+  clusterIP: None
+  selector:
+    app: prometheus-libvirt-exporter
+  ports:
+    - name: metrics
+      port: 9177
+      targetPort: metrics
+      protocol: TCP
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: prometheus-libvirt-exporter
+  namespace: my-namespace
+  labels:
+    app: prometheus-libvirt-exporter
+spec:
+  selector:
+    matchLabels:
+      app: prometheus-libvirt-exporter
+  endpoints:
+    - port: metrics
+      path: /metrics
+      interval: 30s
+      relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: node
+        - sourceLabels: [__meta_kubernetes_pod_name]
+          targetLabel: pod
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          targetLabel: instance
