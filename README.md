@@ -59,6 +59,10 @@ You can configure the exporter using command-line flags:
   Path under which to expose metrics.  
   Default: `/metrics`
 
+- `--web.health-path`
+  Path under which to expose the health endpoint. Set to non-empty to enable (e.g. `/health`).
+  Default: `""`
+
 For a full list of options, run:
 
 ```sh

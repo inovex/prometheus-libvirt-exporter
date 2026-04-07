@@ -41,6 +41,9 @@ func main() {
 	metricsPath := kingpin.Flag(
 		"web.telemetry-path", "Path under which to expose metrics",
 	).Default("/metrics").String()
+	healthPath := kingpin.Flag(
+		"web.health-path", "Path under which to expose the health endpoint. Set to non-empty to enable.",
+	).Default("").String()
 	toolkitFlags := webflag.AddFlags(kingpin.CommandLine, ":9177")
 
 	promlogConfig := &promslog.Config{}
@@ -68,6 +71,10 @@ func main() {
 	prometheus.MustRegister(exporter)
 
 	http.Handle(*metricsPath, promhttp.Handler())
+	if *healthPath != "" {
+		http.HandleFunc(*healthPath, exporter.HealthHandler)
+		logger.Info("Health endpoint enabled", "path", *healthPath)
+	}
 	if *metricsPath != "/" {
 		landingCnf := web.LandingConfig{
 			Name:        "Libvirt Exporter",
@@ -79,6 +86,12 @@ func main() {
 					Text:    "Metrics",
 				},
 			},
+		}
+		if *healthPath != "" {
+			landingCnf.Links = append(landingCnf.Links, web.LandingLinks{
+				Address: *healthPath,
+				Text:    "Health",
+			})
 		}
 		landingPage, err := web.NewLandingPage(landingCnf)
 		if err != nil {

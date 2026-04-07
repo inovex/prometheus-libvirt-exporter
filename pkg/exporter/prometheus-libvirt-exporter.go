@@ -3,6 +3,7 @@ package exporter
 import (
 	"encoding/xml"
 	"fmt"
+	"net/http"
 	"regexp"
 	"sync"
 	"time"
@@ -1438,4 +1439,19 @@ func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- libvirtStoragePoolCapacity
 	ch <- libvirtStoragePoolAllocation
 	ch <- libvirtStoragePoolAvailable
+}
+
+// HealthHandler returns http 200 if libvirt is reachable, http 503 otherwise.
+func (e *LibvirtExporter) HealthHandler(w http.ResponseWriter, r *http.Request) {
+	dialer := dialers.NewLocal(dialers.WithSocket(e.uri), dialers.WithLocalTimeout(5*time.Second))
+	l := libvirt.NewWithDialer(dialer)
+	if err := l.ConnectToURI(e.driver); err != nil {
+		e.logger.Error("health check: failed to connect to libvirt", "msg", err)
+		w.WriteHeader(http.StatusServiceUnavailable)
+		return
+	}
+	if err := l.Disconnect(); err != nil {
+		e.logger.Error("health check: failed to disconnect from libvirt", "msg", err)
+	}
+	w.WriteHeader(http.StatusOK)
 }
