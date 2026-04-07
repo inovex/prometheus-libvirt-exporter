@@ -1,0 +1,1569 @@
+{
+   "__inputs": [
+      {
+         "description": "Select your Prometheus datasource",
+         "label": "Prometheus",
+         "name": "datasource",
+         "pluginId": "prometheus",
+         "pluginName": "Prometheus",
+         "type": "datasource"
+      }
+   ],
+   "__requires": [
+      {
+         "id": "grafana",
+         "name": "Grafana",
+         "type": "grafana",
+         "version": "9.0.0"
+      },
+      {
+         "id": "prometheus",
+         "name": "Prometheus",
+         "type": "datasource",
+         "version": "1.0.0"
+      }
+   ],
+   "description": "Comprehensive monitoring for Libvirt virtual machines running on OpenStack. Visualizes CPU, memory, disk I/O, and network traffic per instance. Requires the inovex/prometheus-libvirt-exporter to be installed and scraping metrics.",
+   "graphTooltip": 1,
+   "panels": [
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+         },
+         "id": 1,
+         "title": "Overview",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Shows the current power state of the VM. Requires the VM to be powered-on to return a value.",
+         "fieldConfig": {
+            "defaults": {
+               "mappings": [
+                  {
+                     "options": {
+                        "0": {
+                           "color": "red",
+                           "text": "NO STATE"
+                        },
+                        "1": {
+                           "color": "green",
+                           "text": "ON"
+                        },
+                        "2": {
+                           "color": "orange",
+                           "text": "BLOCKED"
+                        },
+                        "3": {
+                           "color": "orange",
+                           "text": "PAUSED"
+                        },
+                        "4": {
+                           "color": "orange",
+                           "text": "SHUTTING DOWN"
+                        },
+                        "5": {
+                           "color": "red",
+                           "text": "OFF"
+                        },
+                        "6": {
+                           "color": "red",
+                           "text": "CRASHED"
+                        },
+                        "7": {
+                           "color": "red",
+                           "text": "SUSPENDED"
+                        }
+                     },
+                     "type": "value"
+                  }
+               ],
+               "noValue": "Requires VM to be powered-on"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 0,
+            "y": 1
+         },
+         "id": 2,
+         "options": {
+            "colorMode": "value",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "libvirt_domain_info_state{domain=\"$dom_id\"}"
+            }
+         ],
+         "title": "VM • Power State",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Shows the current number of allocated vCPUs for the VM.",
+         "fieldConfig": {
+            "defaults": {
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": 0
+                     }
+                  ]
+               }
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 4,
+            "y": 1
+         },
+         "id": 3,
+         "options": {
+            "colorMode": "fixed",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "libvirt_domain_vcpu_current{domain=\"$dom_id\"}"
+            }
+         ],
+         "title": "CPU • Allocated vCPUs",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Shows the current allocated memory for the VM.",
+         "fieldConfig": {
+            "defaults": {
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": 0
+                     }
+                  ]
+               },
+               "unit": "bytes"
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 8,
+            "y": 1
+         },
+         "id": 4,
+         "options": {
+            "colorMode": "fixed",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "libvirt_domain_memory_stats_maximum_bytes{domain=\"$dom_id\"}"
+            }
+         ],
+         "title": "Memory • Allocated RAM",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Shows the number of disks attached to the VM.",
+         "fieldConfig": {
+            "defaults": {
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": 0
+                     }
+                  ]
+               }
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 12,
+            "y": 1
+         },
+         "id": 5,
+         "options": {
+            "colorMode": "fixed",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "count(libvirt_domain_block_stats_info{domain=\"$dom_id\"})"
+            }
+         ],
+         "title": "Storage • Disk Count",
+         "type": "stat"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Shows the number of network ports attached to the VM.",
+         "fieldConfig": {
+            "defaults": {
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": 0
+                     }
+                  ]
+               }
+            }
+         },
+         "gridPos": {
+            "h": 4,
+            "w": 4,
+            "x": 16,
+            "y": 1
+         },
+         "id": 6,
+         "options": {
+            "colorMode": "fixed",
+            "graphMode": "area",
+            "reduceOptions": {
+               "calcs": [
+                  "lastNotNull"
+               ]
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "count(libvirt_domain_interface_stats_info{domain=\"$dom_id\"})"
+            }
+         ],
+         "title": "Network • Port Count",
+         "type": "stat"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 2
+         },
+         "id": 7,
+         "title": "CPU Information",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Percentage of allocated CPU capacity actively used by the VM.\n\n- 0–80% → Normal <br>\n- 80-90% → Heavy load <br>\n- 90% sustained → CPU pressure likely\n\nHigh utilization + scheduling delay indicates host contention.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "thresholdsStyle": {
+                     "mode": "area"
+                  }
+               },
+               "noValue": "No Data",
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "yellow",
+                        "value": 80
+                     },
+                     {
+                        "color": "red",
+                        "value": 90
+                     }
+                  ]
+               },
+               "unit": "percent"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 3
+         },
+         "id": 8,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "(rate(libvirt_domain_info_cpu_time_seconds_total{domain=\"$dom_id\"}[$__rate_interval])/libvirt_domain_vcpu_current{domain=\"$dom_id\"}) * 100",
+               "legendFormat": "{{domain}}"
+            }
+         ],
+         "title": "CPU • Usage %",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Time the VM was runnable but not scheduled by the hypervisor.\n\n- 0–1% → Healthy <br>\n- 1–3% → Light contention <br>\n- 3–5% → Moderate contention <br>\n- 5% sustained → Requires Operator attention <br>\n\nHigh delay + high utilization = hypervisor contention.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "thresholdsStyle": {
+                     "mode": "area"
+                  }
+               },
+               "noValue": "No Data",
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "yellow",
+                        "value": 1
+                     },
+                     {
+                        "color": "orange",
+                        "value": 3
+                     },
+                     {
+                        "color": "red",
+                        "value": 5
+                     }
+                  ]
+               },
+               "unit": "percent"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 3
+         },
+         "id": 9,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "(sum by (domain) (rate(libvirt_domain_vcpu_delay_seconds_total{domain=\"$dom_id\"}[$__rate_interval]))/sum by (domain) (rate(libvirt_domain_vcpu_time_seconds_total{domain=\"$dom_id\"}[$__rate_interval]))) * 100",
+               "legendFormat": "{{domain}}"
+            }
+         ],
+         "title": "CPU • Steal Time %",
+         "type": "timeseries"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 4
+         },
+         "id": 10,
+         "title": "Memory Information",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Percentage of allocated memory currently used inside the guest OS.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "thresholdsStyle": {
+                     "mode": "area"
+                  }
+               },
+               "noValue": "No Data",
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "yellow",
+                        "value": 80
+                     },
+                     {
+                        "color": "red",
+                        "value": 90
+                     }
+                  ]
+               },
+               "unit": "percent"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 0,
+            "y": 5
+         },
+         "id": 11,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "libvirt_domain_memory_stats_used_percent{domain=\"$dom_id\"}",
+               "legendFormat": "{{domain}}"
+            }
+         ],
+         "title": "Memory • Usage %",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Amount of data swapped into RAM from disk per second.\n\nSustained non-zero values indicate active memory pressure inside the guest.\n\n- 0 → No swap activity <br>\n- <1 MB/s → Light pressure\n- 1–10 MB/s sustained → Moderate pressure\n- 10 MB/s sustained → Likely performance impact",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "thresholdsStyle": {
+                     "mode": "area"
+                  }
+               },
+               "noValue": "No Data",
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "orange",
+                        "value": 1048576
+                     },
+                     {
+                        "color": "red",
+                        "value": 10485760
+                     }
+                  ]
+               },
+               "unit": "binBps"
+            }
+         },
+         "gridPos": {
+            "h": 10,
+            "w": 12,
+            "x": 12,
+            "y": 5
+         },
+         "id": 12,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain)(\n  rate(libvirt_domain_memory_stats_swap_in_bytes{domain=\"$dom_id\"}[$__rate_interval])\n+\n  rate(libvirt_domain_memory_stats_swap_out_bytes{domain=\"$dom_id\"}[$__rate_interval])\n)\n",
+               "legendFormat": "{{domain}}"
+            }
+         ],
+         "title": "Memory • Total Swap Activity",
+         "type": "timeseries"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 6
+         },
+         "id": 13,
+         "title": "Storage Information",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Total read + write operations per second per disk.\n\nHigh IOPS alone is fine.\nHigh IOPS + increasing latency indicates storage saturation.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "ops/s"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 7
+         },
+         "id": 14,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device) (\n  rate(libvirt_domain_block_stats_read_requests_total{domain=\"$dom_id\"}[$__rate_interval])\n  +\n  rate(libvirt_domain_block_stats_write_requests_total{domain=\"$dom_id\"}[$__rate_interval])\n) ",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Storage • Total IOPS",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Number of read operations per second across all VM disks.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "ops/s"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 7
+         },
+         "id": 15,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device) (\n  rate({__name__=~\"libvirt_domain_block_stats_read_requests_total\", domain=\"$dom_id\"}[$__rate_interval])\n) ",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Storage • Read IOPS",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Number of write operations per second across all VM disks.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "ops/s"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 7
+         },
+         "id": 16,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device) (\n  rate({__name__=~\"libvirt_domain_block_stats_write_requests_total\", domain=\"$dom_id\"}[$__rate_interval])\n) ",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Storage • Write IOPS",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Combined read and write data rate (bytes/sec).\n\nHigh throughput + high latency suggests backend limits / qos limits.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "binBps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 15
+         },
+         "id": 17,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device) (\n  rate(libvirt_domain_block_stats_read_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n  +\n  rate(libvirt_domain_block_stats_write_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n) ",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Storage • Total Throughput",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Read throughput in bytes per second across all VM disks.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "binBps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 15
+         },
+         "id": 18,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device) (\n  rate({__name__=~\"libvirt_domain_block_stats_read_bytes_total\", domain=\"$dom_id\"}[$__rate_interval])\n) ",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Storage • Read Throughput",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Write throughput in bytes per second across all VM disks.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "binBps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 15
+         },
+         "id": 19,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device) (\n  rate({__name__=~\"libvirt_domain_block_stats_write_bytes_total\", domain=\"$dom_id\"}[$__rate_interval])\n) ",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Storage • Write Throughput",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Average time to complete read operations.\n\n- <5 ms → Excellent <br>\n- 5–25 ms → Acceptable <br>\n- 25-35 ms → Workload may be impacted <br>\n- 35 ms sustained → Backend pressure / Reached QOS Limits\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "thresholdsStyle": {
+                     "mode": "area"
+                  }
+               },
+               "noValue": "No Data",
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "lightgreen",
+                        "value": 5
+                     },
+                     {
+                        "color": "orange",
+                        "value": 25
+                     },
+                     {
+                        "color": "red",
+                        "value": 35
+                     }
+                  ]
+               },
+               "unit": "ms"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 23
+         },
+         "id": 20,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "(\n  sum by (domain, target_device) (\n    rate({__name__=~\"libvirt_domain_block_stats_read_time_seconds_total\", domain=\"$dom_id\"}[$__rate_interval])\n  )\n  /\n  sum by (domain, target_device) (\n    rate({__name__=~\"libvirt_domain_block_stats_read_requests_total\", domain=\"$dom_id\"}[$__rate_interval])\n  )\n) * 1000 ",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Storage • Read Latency",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Average time to complete write operations.\n\n- <8 ms → Excellent <br>\n- 8–25 ms → Acceptable <br>\n- 25-35 ms → Workload may be impacted <br>\n- 35 ms sustained → Backend pressure / Reached QOS Limits\n",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "thresholdsStyle": {
+                     "mode": "area"
+                  }
+               },
+               "noValue": "No Data",
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "lightgreen",
+                        "value": 8
+                     },
+                     {
+                        "color": "orange",
+                        "value": 25
+                     },
+                     {
+                        "color": "red",
+                        "value": 35
+                     }
+                  ]
+               },
+               "unit": "ms"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 23
+         },
+         "id": 21,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "(\n  sum by (domain, target_device) (\n    rate({__name__=~\"libvirt_domain_block_stats_write_time_seconds_total\", domain=\"$dom_id\"}[$__rate_interval])\n  )\n  /\n  sum by (domain, target_device) (\n    rate({__name__=~\"libvirt_domain_block_stats_write_requests_total\", domain=\"$dom_id\"}[$__rate_interval])\n  )\n) * 1000 ",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Storage • Write Latency",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Average size per I/O operation.\n\nSmall values → IOPS-heavy workload <br>\nLarge values → throughput-heavy workload",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "bytes"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 23
+         },
+         "id": 22,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "(\n  sum by (domain, target_device) (\n    rate(libvirt_domain_block_stats_read_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n    +\n    rate(libvirt_domain_block_stats_write_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n  )\n  /\n  sum by (domain, target_device) (\n    rate(libvirt_domain_block_stats_read_requests_total{domain=\"$dom_id\"}[$__rate_interval])\n    +\n    rate(libvirt_domain_block_stats_write_requests_total{domain=\"$dom_id\"}[$__rate_interval])\n  )\n) ",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Storage • Average Block Size",
+         "type": "timeseries"
+      },
+      {
+         "collapsed": false,
+         "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 24
+         },
+         "id": 23,
+         "title": "Network Information",
+         "type": "row"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Total network throughput in bytes per second across all VM interfaces.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "binBps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 25
+         },
+         "id": 24,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device)(\n  rate(libvirt_domain_interface_stats_receive_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n+\n  rate(libvirt_domain_interface_stats_transmit_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n)\n",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Network • Total Throughput",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Network receive throughput in bytes per second across all VM interfaces.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "binBps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 25
+         },
+         "id": 25,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device)(\n  rate(libvirt_domain_interface_stats_receive_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n)\n",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Network • Receive Throughput",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Network transmit throughput in bytes per second across all VM interfaces.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "binBps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 25
+         },
+         "id": 26,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device)(\n  rate(libvirt_domain_interface_stats_transmit_bytes_total{domain=\"$dom_id\"}[$__rate_interval])\n)\n",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Network • Transmit Throughput",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Total network packets per second across all VM interfaces.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "pps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 33
+         },
+         "id": 27,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device)(\n  rate(libvirt_domain_interface_stats_transmit_packets_total{domain=\"$dom_id\"}[$__rate_interval])\n+\n  rate(libvirt_domain_interface_stats_receive_packets_total{domain=\"$dom_id\"}[$__rate_interval])\n)\n",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Network • Total Packets",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Network receive packets per second across all VM interfaces.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "pps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 33
+         },
+         "id": 28,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device)(\n  rate(libvirt_domain_interface_stats_receive_packets_total{domain=\"$dom_id\"}[$__rate_interval])\n)\n",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Network • Receive Packets",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Network transmit packets per second across all VM interfaces.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "pps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 33
+         },
+         "id": 29,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device)(\n  rate(libvirt_domain_interface_stats_transmit_packets_total{domain=\"$dom_id\"}[$__rate_interval])\n)\n",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Network • Transmit Packets",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Inbound packet errors per second.\n\nThese indicate corrupted frames, checksum failures, or driver-level issues.\n\n⚠ Sustained non-zero values are abnormal.\nEven 0.1 errors/sec sustained is worth investigation.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "thresholdsStyle": {
+                     "mode": "area"
+                  }
+               },
+               "noValue": "No Data",
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "red",
+                        "value": 1
+                     }
+                  ]
+               },
+               "unit": "eps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 41
+         },
+         "id": 30,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device)(\n  rate(libvirt_domain_interface_stats_receive_errors_total{domain=\"$dom_id\"}[$__rate_interval])\n)\n",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Network • Receive Errors",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Outbound packet errors per second.\n\nThese indicate corrupted frames, checksum failures, or driver-level issues.\n\n⚠ Sustained non-zero values are abnormal.\nEven 0.1 errors/sec sustained is worth investigation.",
+         "fieldConfig": {
+            "defaults": {
+               "custom": {
+                  "thresholdsStyle": {
+                     "mode": "area"
+                  }
+               },
+               "noValue": "No Data",
+               "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                     {
+                        "color": "green",
+                        "value": null
+                     },
+                     {
+                        "color": "red",
+                        "value": 1
+                     }
+                  ]
+               },
+               "unit": "eps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 41
+         },
+         "id": 31,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device)(\n  rate(libvirt_domain_interface_stats_transmit_errors_total{domain=\"$dom_id\"}[$__rate_interval])\n)\n",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Network • Transmit Errors",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Inbound packets dropped per second.\n\nCommon causes: <br>\n- Buffer exhaustion <br>\n- VM CPU not processing packets fast enough <br>\n- Host networking pressure <br>\n\nDrops + high CPU delay = likely host contention.",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "dps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 49
+         },
+         "id": 32,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device)(\n  rate(libvirt_domain_interface_stats_receive_drops_total{domain=\"$dom_id\"}[$__rate_interval])\n)",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Network • Receive Drops",
+         "type": "timeseries"
+      },
+      {
+         "datasource": {
+            "type": "prometheus",
+            "uid": "${datasource}"
+         },
+         "description": "Outbound packets dropped per second.\n\nPotential Causes:\n- Egress shaping\n- Queue limits\n- Host network congestion",
+         "fieldConfig": {
+            "defaults": {
+               "noValue": "No Data",
+               "unit": "dps"
+            }
+         },
+         "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 49
+         },
+         "id": 33,
+         "options": {
+            "legend": {
+               "displayMode": "list",
+               "placement": "bottom"
+            },
+            "tooltip": {
+               "mode": "multi"
+            }
+         },
+         "pluginVersion": "v11.4.0",
+         "targets": [
+            {
+               "datasource": {
+                  "type": "prometheus",
+                  "uid": "${datasource}"
+               },
+               "expr": "sum by (domain, target_device)(\n  rate(libvirt_domain_interface_stats_receive_drops_total{domain=\"$dom_id\"}[$__rate_interval])\n)",
+               "legendFormat": "{{target_device}}"
+            }
+         ],
+         "title": "Network • Transmit Drops",
+         "type": "timeseries"
+      }
+   ],
+   "schemaVersion": 39,
+   "tags": [
+      "libvirt",
+      "inovex",
+      "openstack"
+   ],
+   "templating": {
+      "list": [
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "label": "Project Name",
+            "name": "project_name",
+            "query": "label_values(libvirt_domain_openstack_info, project_name)",
+            "refresh": 1,
+            "type": "query"
+         },
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "label": "VM Name",
+            "name": "vm_name",
+            "query": "label_values(libvirt_domain_openstack_info{project_name=\"$project_name\"}, instance_name)",
+            "refresh": 1,
+            "type": "query"
+         },
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "label": "VM ID",
+            "name": "vm_id",
+            "query": "label_values(libvirt_domain_openstack_info{instance_name=\"$vm_name\", project_name=\"$project_name\"}, instance_id)",
+            "refresh": 1,
+            "type": "query"
+         },
+         {
+            "datasource": {
+               "type": "prometheus",
+               "uid": "${datasource}"
+            },
+            "hide": 2,
+            "label": "Domain ID",
+            "name": "dom_id",
+            "query": "label_values(libvirt_domain_openstack_info{instance_name=\"$vm_name\", project_name=\"$project_name\", instance_id=\"$vm_id\"},domain)",
+            "refresh": 1,
+            "type": "query"
+         }
+      ]
+   },
+   "time": {
+      "from": "now-6h",
+      "to": "now"
+   },
+   "timezone": "utc",
+   "title": "Libvirt Dashboard for Openstack"
+}
