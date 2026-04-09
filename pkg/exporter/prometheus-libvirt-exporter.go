@@ -389,9 +389,6 @@ var (
 	}
 
 	additionalBlockStatName = regexp.MustCompile(`block\.(\d+)\.(.+)`)
-	bdevNameRegex           = regexp.MustCompile(`block\.(\d+)\.name`)
-	bdevMetricsRegex        = regexp.MustCompile(`block\.(\d+)\..+`)
-	bdevMetricRegexTemplate = `block\.%s\.(.+)`
 	intNameRegex            = regexp.MustCompile(`net\.(\d+)\.name`)
 	intMetricsRegex         = regexp.MustCompile(`net\.(\d+)\.(rx|tx)\.(\w+)`)
 	intMetricRegexTemplate  = `net\.%s\.(.+)`
@@ -797,39 +794,57 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 	}
 
 	domainStatBlock := data[0]
+	type rawBlockStat struct {
+		name    string
+		metrics map[string]uint64
+	}
+	// Index -> rawBlockStat
+	statsByIndex := make(map[string]*rawBlockStat)
+
+	for _, param := range domainStatBlock.Params {
+		matches := additionalBlockStatName.FindStringSubmatch(param.Field)
+		if matches == nil {
+			continue
+		}
+		idx := matches[1]
+		field := matches[2]
+
+		if _, ok := statsByIndex[idx]; !ok {
+			statsByIndex[idx] = &rawBlockStat{
+				metrics: make(map[string]uint64),
+			}
+		}
+
+		if field == "name" {
+			if nameStr, ok := param.Value.I.(string); ok {
+				statsByIndex[idx].name = nameStr
+			}
+		} else {
+			if val, ok := param.Value.I.(uint64); ok {
+				statsByIndex[idx].metrics[field] = val
+			}
+		}
+	}
+
+	metricsByName := make(map[string]map[string]uint64)
+	for _, stat := range statsByIndex {
+		if stat.name != "" {
+			metricsByName[stat.name] = stat.metrics
+		}
+	}
+
 	for _, disk := range domain.libvirtSchema.Devices.Disks {
 		if disk.Device == "cdrom" || disk.Device == "fd" {
 			continue
 		}
+
 		var rRdReq, rRdBytes, rWrReq, rWrBytes uint64
 
-		bdev_name := bdevNameRegex
-		bdev_metrics := bdevMetricsRegex
-		var bdevIdx string
-		for _, param := range domainStatBlock.Params {
-			switch {
-			case bdev_name.MatchString(param.Field):
-				// We have a match for the block device name
-				match := bdev_name.FindStringSubmatch(param.Field)
-
-				if param.Value.I.(string) == disk.Target.Device {
-					bdevIdx = match[1]
-				}
-			case len(bdevIdx) > 0 && bdev_metrics.FindStringSubmatch(param.Field)[1] == bdevIdx:
-				// We have a match for the block device index
-				bdev_metric := regexp.MustCompile(fmt.Sprintf(bdevMetricRegexTemplate, bdevIdx))
-				metric := bdev_metric.FindStringSubmatch(param.Field)
-				switch metric[1] {
-				case "rd.bytes":
-					rRdBytes = param.Value.I.(uint64)
-				case "rd.reqs":
-					rRdReq = param.Value.I.(uint64)
-				case "wr.bytes":
-					rWrBytes = param.Value.I.(uint64)
-				case "wr.reqs":
-					rWrReq = param.Value.I.(uint64)
-				}
-			}
+		if metrics, ok := metricsByName[disk.Target.Device]; ok {
+			rRdBytes = metrics["rd.bytes"]
+			rRdReq = metrics["rd.reqs"]
+			rWrBytes = metrics["wr.bytes"]
+			rWrReq = metrics["wr.reqs"]
 		}
 
 		promDiskLabels := append(promLabels, disk.Target.Device)
