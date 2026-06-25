@@ -1,7 +1,7 @@
 ---
 # Sample manifest for deploying the prometheus-libvirt-exporter as a DaemonSet in Kubernetes.
 # The ServiceMonitor allows auto-discovery and metric scraping with the Prometheus Operator.
-# Update `image` tag to the desired version and modify `namespace` and `nodeSelector` based on cluster setup.
+# Update `image` tag `<version>` to the desired version and modify `namespace` and `nodeSelector` based on cluster setup.
 #
 apiVersion: apps/v1
 kind: DaemonSet
@@ -25,7 +25,7 @@ spec:
         - operator: Exists
       containers:
         - name: prometheus-libvirt-exporter
-          image: ghcr.io/inovex/prometheus-libvirt-exporter:2.3.2
+          image: ghcr.io/inovex/prometheus-libvirt-exporter:<version>
           command: ["usr/bin/prometheus-libvirt-exporter"]
           args:
             - --web.health-path=/health
@@ -36,18 +36,21 @@ spec:
           volumeMounts:
             - name: libvirt-sock
               mountPath: /var/run/libvirt/libvirt-sock-ro
+          # Use readinessProbe to check if the exporter can connect to libvirt. Unlike livenessProbe it does not restart the pod on failure.
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 9177
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          # livenessProbe restarts the pod if the exporter cannot connect to libvirt.
+          # This may be the case when the exporter runs with a hostPath socket mount and the socket file is deleted and recreated by a libvirt pod.
           livenessProbe:
             httpGet:
               path: /health
               port: 9177
             initialDelaySeconds: 10
             periodSeconds: 30
-          readinessProbe:
-            httpGet:
-              path: /metrics
-              port: 9177
-            initialDelaySeconds: 10
-            periodSeconds: 10
           resources:
             requests:
               cpu: 200m
