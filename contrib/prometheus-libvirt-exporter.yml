@@ -3,6 +3,18 @@
 # The ServiceMonitor allows auto-discovery and metric scraping with the Prometheus Operator.
 # Update `image` tag `<version>` to the desired version and modify `namespace` and `nodeSelector` based on cluster setup.
 #
+# A note on readiness and liveness probes and the use of hostPath types:
+#
+#  The below sample shows the use of hostPath Socket type for the libvirt socket file.
+#  This is the recommended approach to avoid exposing the entire /var/run/libvirt directory.
+#  When the exporter runs with a hostPath Socket type, the readiness and liveness probes fail if the socket file is deleted and recreated.
+#  The socket mount becomes stale (inode change) and the exporter cannot connect to libvirt, causing the probes to fail and the pod to be restarted (livenessProbe).
+#  This can happen during certain operations on the host, for example when the libvirt socket is managed by a separate pod (e.g. nova-compute) that restarts.
+#
+#  When using hostPath Directory type, the exporter can auto-recover when a libvirt socket file is deleted and recreated.
+#  But this exposes the entire /var/run/libvirt directory, which is not recommended for security reasons.
+#  When using subPath on the volume mount, the same issue occurs as with the Socket type, so it is not recommended.
+#
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
@@ -36,15 +48,17 @@ spec:
           volumeMounts:
             - name: libvirt-sock
               mountPath: /var/run/libvirt/libvirt-sock-ro
-          # Use readinessProbe to check if the exporter can connect to libvirt. Unlike livenessProbe it does not restart the pod on failure.
+          # Use readinessProbe to check if the exporter can connect to libvirt. Unlike livenessProbe, it does not restart the pod on failure.
+          # Use this with hostPath type Directory (exporter auto-recovers).
           readinessProbe:
             httpGet:
               path: /health
               port: 9177
             initialDelaySeconds: 10
             periodSeconds: 30
-          # livenessProbe restarts the pod if the exporter cannot connect to libvirt.
-          # This may be the case when the exporter runs with a hostPath socket mount and the socket file is deleted and recreated by a libvirt pod.
+          # Use livenessProbe to restart the pod if the exporter cannot connect to libvirt.
+          # Use this with hostPath type Socket (stale mount requires pod restart).
+          # Remove this with hostPath type Directory, as the exporter auto-recovers without a pod restart.
           livenessProbe:
             httpGet:
               path: /health
