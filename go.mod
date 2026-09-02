@@ -1,6 +1,6 @@
 module github.com/inovex/prometheus-libvirt-exporter
 
-go 1.26
+go 1.27
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0

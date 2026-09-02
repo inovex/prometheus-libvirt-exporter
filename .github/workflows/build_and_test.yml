@@ -14,7 +14,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version: 1.26.x
+          go-version: 1.27.x
 
       - name: Run Tests
         run: go test ./...
@@ -37,7 +37,7 @@ jobs:
       - name: Setup Go
         uses: actions/setup-go@v7
         with:
-          go-version: 1.26.x
+          go-version: 1.27.x
 
       - name: Run Goreleaser
         if: ${{ github.event_name != 'pull_request' }}
