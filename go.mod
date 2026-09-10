@@ -4,7 +4,7 @@ go 1.27
 
 require (
 	github.com/alecthomas/kingpin/v2 v2.4.0
-	github.com/digitalocean/go-libvirt v0.0.0-20260609165003-6254771e63a8
+	github.com/digitalocean/go-libvirt v0.0.0-20260814190004-1a83157e1858
 	github.com/prometheus/client_golang v1.24.1
 	github.com/prometheus/common v0.71.0
 	github.com/prometheus/exporter-toolkit v0.19.0
