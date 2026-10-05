@@ -358,7 +358,7 @@ g.dashboard.new('Libvirt Dashboard for Openstack')
 )
 + g.dashboard.withTags(['libvirt', 'inovex', 'openstack'])
 + g.dashboard.graphTooltip.withSharedCrosshair()
-+ g.dashboard.withVariables([vars.project, vars.vmName, vars.vmId, vars.domId])
++ g.dashboard.withVariables([vars.datasource, vars.project, vars.vmName, vars.vmId, vars.domId])
 + g.dashboard.withPanels([
   g.panel.row.new('Overview') + { gridPos: { x: 0, y: 0, w: 24, h: 1 } },
   summaryPanels.powerState { gridPos: { x: 0, y: 1, w: 4, h: 4 } },
@@ -399,16 +399,6 @@ g.dashboard.new('Libvirt Dashboard for Openstack')
   networkPanel.networkDropsTransmit { gridPos: { x: 12, y: 49, w: 12, h: 8 } },
 
 ]) + {
-  __inputs: [
-    {
-      name: 'datasource',
-      label: 'Prometheus',
-      description: 'Select your Prometheus datasource',
-      type: 'datasource',
-      pluginId: 'prometheus',
-      pluginName: 'Prometheus',
-    },
-  ],
   // Good practice to declare requirements for templates
   __requires: [
     { type: 'grafana', id: 'grafana', name: 'Grafana', version: '9.0.0' },

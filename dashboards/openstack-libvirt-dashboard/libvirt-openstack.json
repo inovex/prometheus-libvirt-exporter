@@ -1,14 +1,4 @@
 {
-   "__inputs": [
-      {
-         "description": "Select your Prometheus datasource",
-         "label": "Prometheus",
-         "name": "datasource",
-         "pluginId": "prometheus",
-         "pluginName": "Prometheus",
-         "type": "datasource"
-      }
-   ],
    "__requires": [
       {
          "id": "grafana",
@@ -1513,6 +1503,12 @@
    ],
    "templating": {
       "list": [
+         {
+            "label": "Datasource",
+            "name": "datasource",
+            "query": "prometheus",
+            "type": "datasource"
+         },
          {
             "datasource": {
                "type": "prometheus",
