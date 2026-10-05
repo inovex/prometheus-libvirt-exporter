@@ -1,9 +1,9 @@
 local g = import 'github.com/grafana/grafonnet/gen/grafonnet-v11.4.0/main.libsonnet';
 
 {
-  //   datasource:
-  //     g.dashboard.variable.datasource.new('datasource', 'prometheus')
-  //     + g.dashboard.variable.datasource.generalOptions.withLabel('DataSource'),
+  datasource:
+    g.dashboard.variable.datasource.new('datasource', 'prometheus')
+    + g.dashboard.variable.datasource.generalOptions.withLabel('Datasource'),
 
   project:
     g.dashboard.variable.query.new('project_name', 'label_values(libvirt_domain_openstack_info, project_name)')
