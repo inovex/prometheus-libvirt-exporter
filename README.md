@@ -38,25 +38,25 @@ sudo systemctl enable --now prometheus-libvirt-exporter
 
 You can configure the exporter using command-line flags:
 
-- `--libvirt.uri`  
-  Libvirt URI from which to extract metrics.  
+- `--libvirt.uri`
+  Libvirt URI from which to extract metrics.
   Default: `/var/run/libvirt/libvirt-sock-ro`
 
-- `--libvirt.driver`  
-  Libvirt driver to use.  
+- `--libvirt.driver`
+  Libvirt driver to use.
   Default: `qemu:///system`
 
-- `--exporter.timeout`  
-  Maximum libvirt API call duration (e.g., `3s`).  
+- `--exporter.timeout`
+  Maximum libvirt API call duration (e.g., `3s`).
   Default: `3s`
 
-- `--exporter.max-concurrent-collects`  
-  Maximum number of concurrent collects (min: 1).  
-  Adapt libvirtd `max_client_requests` according to the value chosen here  
+- `--exporter.max-concurrent-collects`
+  Maximum number of concurrent collects (min: 1).
+  Adapt libvirtd `max_client_requests` according to the value chosen here
   Default: `4`
 
-- `--web.telemetry-path`  
-  Path under which to expose metrics.  
+- `--web.telemetry-path`
+  Path under which to expose metrics.
   Default: `/metrics`
 
 - `--web.health-path`
@@ -79,7 +79,21 @@ scrape_configs:
     static_configs:
       - targets: ['localhost:9177']
 ```
+## Helm Chart
+The chart configuration is done in the `values.yaml` file.
 
+```bash
+# clone the project
+
+# Package the chart
+cd charts/
+helm package .
+
+# Get chart version & install
+version="$(awk '/^version:/{ print $NF }' Chart.yaml)"
+helm install prometheus-libvirt-exporter prometheus-libvirt-exporter-${version}.tgz
+
+```
 ## Building and running
 
 This release provides a set of assets for the prometheus-libvirt-exporter. It includes installation packages for various platforms (apk, deb, rpm) and the the binaries. Additionally, source code archives in both zip and tar.gz formats are available for download.

@@ -1,0 +1,59 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ include "libvirt-exporter.fullname" . }}
+  labels:
+{{- include "libvirt-exporter.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+{{- include "libvirt-exporter.labels" . | indent 6 }}
+  template:
+    metadata:
+      labels:
+{{- include "libvirt-exporter.labels" . | indent 8 }}
+    spec:
+      containers:
+      - name: prometheus-libvirt-exporter
+        securityContext:
+          runAsUser: 0
+          privileged: true
+          readOnlyRootFilesystem: false
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        volumeMounts:
+          - name: libvirt-sock
+            mountPath: /var/run/libvirt
+        ports:
+        - name: metrics
+          containerPort: {{ .Values.libvirtExporterPort }}
+          protocol: TCP
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /metrics
+            port: metrics
+            scheme: HTTP
+          periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          successThreshold: {{ .Values.readinessProbe.successThreshold }}
+          timeoutSeconds: {{ .Values.readinessProbe.timeoutSeconds }}
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /metrics
+            port: 9177
+            scheme: HTTP
+          periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          successThreshold: {{ .Values.livenessProbe.successThreshold }}
+          timeoutSeconds: {{ .Values.livenessProbe.timeoutSeconds }}
+      volumes:
+      - name: libvirt-sock
+        hostPath:
+          path: /var/run/libvirt
+          type: DirectoryOrCreate
+{{- if .Values.nodeSelector }}
+      nodeSelector:
+      {{ toYaml .Values.nodeSelector | indent 6 }}
+{{- end }}

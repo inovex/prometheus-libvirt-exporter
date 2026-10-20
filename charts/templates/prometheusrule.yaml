@@ -1,0 +1,56 @@
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "libvirt-exporter.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "libvirt-exporter.labels" . | indent 4 }}
+spec:
+  groups:
+  {{- range $groupName, $group := .Values.promethuesRules }}
+  {{- if (dig "enabled" true $group )}}
+  - name: {{ $groupName }}
+    rules:
+    {{- range $ruleName, $rule := $group.rules }}
+    {{- if (dig "enabled" true $rule )}}
+    - # {{ $ruleName }}
+      {{- with $rule.alert }}
+      alert: {{ . }}
+      {{- end }}
+
+      {{- with $rule.expr }}
+      expr: {{ tpl . $ | quote }}
+      {{- end }}
+
+      {{- with $rule.record }}
+      record: {{ . }}
+      {{- end }}
+
+      {{- with $rule.for }}
+      for: {{ . }}
+      {{- end }}
+
+      {{- with $rule.keep_firing_for }}
+      keep_firing_for: {{ . }}
+      {{- end }}
+
+      {{- with $rule.labels }}
+      labels:
+        {{- range $k,$v := . }}
+        {{ $k }}: {{ tpl $v $ | quote }}
+        {{- end }}
+      {{- end }}
+
+      {{- with $rule.annotations }}
+      annotations:
+        {{- range $k, $v := . }}
+        {{ $k }}: |
+          {{- tpl $v $ | nindent 10 }}
+        {{- end }}
+      {{- end }}
+
+    {{- end }}
+    {{- end }}
+  {{- end }}
+  {{- end }}

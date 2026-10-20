@@ -1,0 +1,44 @@
+---
+image:
+  repository: ghcr.io/inovex/prometheus-libvirt-exporter
+  tag: 2.6.1
+  pullPolicy: Always
+
+nodeSelector:
+  compute-node: enabled
+
+libvirtExporterPort: 9177
+
+readinessProbe:
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 3
+
+livenessProbe:
+  periodSeconds: 10
+  successThreshold: 1
+  timeoutSeconds: 3
+
+serviceMonitor:
+  interval: 1m
+  scrapeTimeout: 30s
+
+service:
+  type: ClusterIP
+  port: 9177
+  targetPort: 9177
+  annotations:
+    prometheus.io/scrape: "true"
+
+promethuesRules:
+  libvirt:
+    enabled: true
+    rules:
+    - alert: LibvirtDown
+      for: 5m
+      expr: libvirt_up != 1
+      labels:
+        severity: critical
+      annotations:
+        summary: "Libvirt down"
+        description: "Libvirt down"
