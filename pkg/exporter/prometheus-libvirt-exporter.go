@@ -257,6 +257,108 @@ var (
 		[]string{"domain", "target_device"},
 		nil)
 
+	//domain block iotune stats
+	libvirtDomainBlockBlkDevIotuneEnabled = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "enabled"),
+		"Whether any I/O throttling (iotune) is configured on the block device. 1 if configured, 0 otherwise",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneTotalBytesSec = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "total_bytes_sec"),
+		"Maximum total (read + write) throughput, in bytes per second. Cannot be combined with read_bytes_sec or write_bytes_sec. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneReadBytesSec = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "read_bytes_sec"),
+		"Maximum read throughput, in bytes per second. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneWriteBytesSec = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "write_bytes_sec"),
+		"Maximum write throughput, in bytes per second. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneTotalIopsSec = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "total_iops_sec"),
+		"Maximum total (read + write) I/O operations per second. Cannot be combined with read_iops_sec or write_iops_sec. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneReadIopsSec = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "read_iops_sec"),
+		"Maximum read I/O operations per second. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneWriteIopsSec = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "write_iops_sec"),
+		"Maximum write I/O operations per second. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneTotalBytesSecMax = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "total_bytes_sec_max"),
+		"Maximum total throughput burst allowed, in bytes per second. It permits short bursts above total_bytes_sec. Cannot be combined with read_bytes_sec_max or write_bytes_sec_max. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneReadBytesSecMax = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "read_bytes_sec_max"),
+		"Maximum read throughput burst allowed, in bytes per second. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneWriteBytesSecMax = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "write_bytes_sec_max"),
+		"Maximum write throughput burst allowed, in bytes per second. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneTotalIopsSecMax = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "total_iops_sec_max"),
+		"Maximum total I/O operations burst allowed. Cannot be combined with read_iops_sec_max or write_iops_sec_max. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneReadIopsSecMax = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "read_iops_sec_max"),
+		"Maximum read I/O operations burst allowed. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneWriteIopsSecMax = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "write_iops_sec_max"),
+		"Maximum write I/O operations burst allowed. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneTotalBytesSecMaxLength = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "total_bytes_sec_max_length"),
+		"Duration in seconds for which the total throughput burst limit (total_bytes_sec_max) may be sustained. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneReadBytesSecMaxLength = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "read_bytes_sec_max_length"),
+		"Duration in seconds for which the read throughput burst limit (read_bytes_sec_max) may be sustained. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneWriteBytesSecMaxLength = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "write_bytes_sec_max_length"),
+		"Duration in seconds for which the write throughput burst limit (write_bytes_sec_max) may be sustained. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneTotalIopsSecMaxLength = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "total_iops_sec_max_length"),
+		"Duration in seconds for which the total I/O operations burst limit (total_iops_sec_max) may be sustained. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneReadIopsSecMaxLength = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "read_iops_sec_max_length"),
+		"Duration in seconds for which the read I/O operations burst limit (read_iops_sec_max) may be sustained. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneWriteIopsSecMaxLength = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "write_iops_sec_max_length"),
+		"Duration in seconds for which the write I/O operations burst limit (write_iops_sec_max) may be sustained. Not emitted when not set",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockBlkDevIotuneSizeIopsSec = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "size_iops_sec"),
+		"Size, in bytes, that counts as one I/O operation for IOPS throttling. Larger requests are counted as multiple operations (e.g. a request of 2x this size counts as 2 I/Os). Not emitted when not set (requests are not normalized by size)",
+		[]string{"domain", "target_device"},
+		nil)
+
 	//domain interface stats
 	libvirtDomainInterfaceInfo = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_interface_stats", "info"),
@@ -854,6 +956,151 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 			prometheus.CounterValue,
 			float64(rWrReq),
 			promDiskLabels...)
+
+		blkIotuneState := 0
+		disabledIotuneRef := libvirt_schema.DiskIotune{}
+		if disk.Iotune != disabledIotuneRef {
+			blkIotuneState = 1
+			if disk.Iotune.TotalBytesSec > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneTotalBytesSec,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.TotalBytesSec),
+					promDiskLabels...)
+			}
+			if disk.Iotune.ReadBytesSec > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneReadBytesSec,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.ReadBytesSec),
+					promDiskLabels...)
+			}
+			if disk.Iotune.WriteBytesSec > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneWriteBytesSec,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.WriteBytesSec),
+					promDiskLabels...)
+			}
+			if disk.Iotune.TotalIopsSec > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneTotalIopsSec,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.TotalIopsSec),
+					promDiskLabels...)
+			}
+			if disk.Iotune.ReadIopsSec > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneReadIopsSec,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.ReadIopsSec),
+					promDiskLabels...)
+			}
+			if disk.Iotune.WriteIopsSec > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneWriteIopsSec,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.WriteIopsSec),
+					promDiskLabels...)
+			}
+			if disk.Iotune.TotalBytesSecMax > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneTotalBytesSecMax,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.TotalBytesSecMax),
+					promDiskLabels...)
+			}
+			if disk.Iotune.ReadBytesSecMax > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneReadBytesSecMax,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.ReadBytesSecMax),
+					promDiskLabels...)
+			}
+			if disk.Iotune.WriteBytesSecMax > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneWriteBytesSecMax,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.WriteBytesSecMax),
+					promDiskLabels...)
+			}
+			if disk.Iotune.TotalIopsSecMax > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneTotalIopsSecMax,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.TotalIopsSecMax),
+					promDiskLabels...)
+			}
+			if disk.Iotune.ReadIopsSecMax > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneReadIopsSecMax,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.ReadIopsSecMax),
+					promDiskLabels...)
+			}
+			if disk.Iotune.WriteIopsSecMax > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneWriteIopsSecMax,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.WriteIopsSecMax),
+					promDiskLabels...)
+			}
+			if disk.Iotune.TotalBytesSecMaxLength > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneTotalBytesSecMaxLength,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.TotalBytesSecMaxLength),
+					promDiskLabels...)
+			}
+			if disk.Iotune.ReadBytesSecMaxLength > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneReadBytesSecMaxLength,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.ReadBytesSecMaxLength),
+					promDiskLabels...)
+			}
+			if disk.Iotune.WriteBytesSecMaxLength > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneWriteBytesSecMaxLength,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.WriteBytesSecMaxLength),
+					promDiskLabels...)
+			}
+			if disk.Iotune.TotalIopsSecMaxLength > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneTotalIopsSecMaxLength,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.TotalIopsSecMaxLength),
+					promDiskLabels...)
+			}
+			if disk.Iotune.ReadIopsSecMaxLength > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneReadIopsSecMaxLength,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.ReadIopsSecMaxLength),
+					promDiskLabels...)
+			}
+			if disk.Iotune.WriteIopsSecMaxLength > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneWriteIopsSecMaxLength,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.WriteIopsSecMaxLength),
+					promDiskLabels...)
+			}
+			if disk.Iotune.SizeIopsSec > 0 {
+				ch <- prometheus.MustNewConstMetric(
+					libvirtDomainBlockBlkDevIotuneSizeIopsSec,
+					prometheus.GaugeValue,
+					float64(disk.Iotune.SizeIopsSec),
+					promDiskLabels...)
+			}
+		}
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockBlkDevIotuneEnabled,
+			prometheus.GaugeValue,
+			float64(blkIotuneState),
+			promDiskLabels...)
+
 		promDiskInfoLabels := append(promLabels, disk.Type, disk.Target.Bus, disk.Driver.Name, disk.Driver.Type, disk.Driver.Cache, disk.Driver.Discard, disk.Source.File, disk.Source.Protocol, disk.Target.Device, disk.Serial)
 		ch <- prometheus.MustNewConstMetric(
 			libvirtDomainBlockStatsInfo,
@@ -1384,6 +1631,26 @@ func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- libvirtDomainBlockFlushReqDesc
 	ch <- libvirtDomainBlockFlushTotalTimeSecondsDesc
 	ch <- libvirtDomainBlockCapacityBytesDesc
+	ch <- libvirtDomainBlockBlkDevIotuneEnabled
+	ch <- libvirtDomainBlockBlkDevIotuneTotalBytesSec
+	ch <- libvirtDomainBlockBlkDevIotuneReadBytesSec
+	ch <- libvirtDomainBlockBlkDevIotuneWriteBytesSec
+	ch <- libvirtDomainBlockBlkDevIotuneTotalIopsSec
+	ch <- libvirtDomainBlockBlkDevIotuneReadIopsSec
+	ch <- libvirtDomainBlockBlkDevIotuneWriteIopsSec
+	ch <- libvirtDomainBlockBlkDevIotuneTotalBytesSecMax
+	ch <- libvirtDomainBlockBlkDevIotuneReadBytesSecMax
+	ch <- libvirtDomainBlockBlkDevIotuneWriteBytesSecMax
+	ch <- libvirtDomainBlockBlkDevIotuneTotalIopsSecMax
+	ch <- libvirtDomainBlockBlkDevIotuneReadIopsSecMax
+	ch <- libvirtDomainBlockBlkDevIotuneWriteIopsSecMax
+	ch <- libvirtDomainBlockBlkDevIotuneTotalBytesSecMaxLength
+	ch <- libvirtDomainBlockBlkDevIotuneReadBytesSecMaxLength
+	ch <- libvirtDomainBlockBlkDevIotuneWriteBytesSecMaxLength
+	ch <- libvirtDomainBlockBlkDevIotuneTotalIopsSecMaxLength
+	ch <- libvirtDomainBlockBlkDevIotuneReadIopsSecMaxLength
+	ch <- libvirtDomainBlockBlkDevIotuneWriteIopsSecMaxLength
+	ch <- libvirtDomainBlockBlkDevIotuneSizeIopsSec
 
 	//domain interface
 	ch <- libvirtDomainInterfaceInfo

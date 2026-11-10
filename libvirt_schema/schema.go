@@ -63,6 +63,7 @@ type Disk struct {
 	Driver DiskDriver `xml:"driver"`
 	Source DiskSource `xml:"source"`
 	Target DiskTarget `xml:"target"`
+	Iotune DiskIotune `xml:"iotune"`
 }
 
 type DiskDriver struct {
@@ -80,6 +81,31 @@ type DiskSource struct {
 type DiskTarget struct {
 	Device string `xml:"dev,attr"`
 	Bus    string `xml:"bus,attr"`
+}
+
+type DiskIotune struct {
+	TotalBytesSec uint64 `xml:"total_bytes_sec,omitempty"`
+	ReadBytesSec  uint64 `xml:"read_bytes_sec,omitempty"`
+	WriteBytesSec uint64 `xml:"write_bytes_sec,omitempty"`
+	TotalIopsSec  uint64 `xml:"total_iops_sec,omitempty"`
+	ReadIopsSec   uint64 `xml:"read_iops_sec,omitempty"`
+	WriteIopsSec  uint64 `xml:"write_iops_sec,omitempty"`
+
+	TotalBytesSecMax uint64 `xml:"total_bytes_sec_max,omitempty"`
+	ReadBytesSecMax  uint64 `xml:"read_bytes_sec_max,omitempty"`
+	WriteBytesSecMax uint64 `xml:"write_bytes_sec_max,omitempty"`
+	TotalIopsSecMax  uint64 `xml:"total_iops_sec_max,omitempty"`
+	ReadIopsSecMax   uint64 `xml:"read_iops_sec_max,omitempty"`
+	WriteIopsSecMax  uint64 `xml:"write_iops_sec_max,omitempty"`
+
+	TotalBytesSecMaxLength uint64 `xml:"total_bytes_sec_max_length,omitempty"`
+	ReadBytesSecMaxLength  uint64 `xml:"read_bytes_sec_max_length,omitempty"`
+	WriteBytesSecMaxLength uint64 `xml:"write_bytes_sec_max_length,omitempty"`
+	TotalIopsSecMaxLength  uint64 `xml:"total_iops_sec_max_length,omitempty"`
+	ReadIopsSecMaxLength   uint64 `xml:"read_iops_sec_max_length,omitempty"`
+	WriteIopsSecMaxLength  uint64 `xml:"write_iops_sec_max_length,omitempty"`
+
+	SizeIopsSec uint64 `xml:"size_iops_sec,omitempty"`
 }
 
 type Interface struct {
