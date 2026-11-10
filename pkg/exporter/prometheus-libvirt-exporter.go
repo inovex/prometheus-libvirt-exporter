@@ -265,62 +265,62 @@ var (
 		nil)
 	libvirtDomainBlockBlkDevIotuneTotalBytesSec = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "total_bytes_sec"),
-		"Maximum total (read + write) throughput, in bytes per second. Cannot be combined with read_bytes_sec or write_bytes_sec. Not emitted when unlimited",
+		"Maximum total (read + write) throughput, in bytes per second. Cannot be combined with read_bytes_sec or write_bytes_sec. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneReadBytesSec = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "read_bytes_sec"),
-		"Maximum read throughput, in bytes per second. Not emitted when unlimited",
+		"Maximum read throughput, in bytes per second. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneWriteBytesSec = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "write_bytes_sec"),
-		"Maximum write throughput, in bytes per second. Not emitted when unlimited",
+		"Maximum write throughput, in bytes per second. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneTotalIopsSec = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "total_iops_sec"),
-		"Maximum total (read + write) I/O operations per second. Cannot be combined with read_iops_sec or write_iops_sec. Not emitted when unlimited",
+		"Maximum total (read + write) I/O operations per second. Cannot be combined with read_iops_sec or write_iops_sec. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneReadIopsSec = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "read_iops_sec"),
-		"Maximum read I/O operations per second. Not emitted when unlimited",
+		"Maximum read I/O operations per second. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneWriteIopsSec = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "write_iops_sec"),
-		"Maximum write I/O operations per second. Not emitted when unlimited",
+		"Maximum write I/O operations per second. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneTotalBytesSecMax = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "total_bytes_sec_max"),
-		"Maximum total throughput burst allowed, in bytes per second. It permits short bursts above total_bytes_sec. Cannot be combined with read_bytes_sec_max or write_bytes_sec_max. Not emitted when unlimited",
+		"Maximum total throughput burst allowed, in bytes per second. It permits short bursts above total_bytes_sec. Cannot be combined with read_bytes_sec_max or write_bytes_sec_max. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneReadBytesSecMax = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "read_bytes_sec_max"),
-		"Maximum read throughput burst allowed, in bytes per second. Not emitted when unlimited",
+		"Maximum read throughput burst allowed, in bytes per second. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneWriteBytesSecMax = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "write_bytes_sec_max"),
-		"Maximum write throughput burst allowed, in bytes per second. Not emitted when unlimited",
+		"Maximum write throughput burst allowed, in bytes per second. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneTotalIopsSecMax = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "total_iops_sec_max"),
-		"Maximum total I/O operations burst allowed. Cannot be combined with read_iops_sec_max or write_iops_sec_max. Not emitted when unlimited",
+		"Maximum total I/O operations burst allowed. Cannot be combined with read_iops_sec_max or write_iops_sec_max. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneReadIopsSecMax = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "read_iops_sec_max"),
-		"Maximum read I/O operations burst allowed. Not emitted when unlimited",
+		"Maximum read I/O operations burst allowed. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneWriteIopsSecMax = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_blkdeviotune", "write_iops_sec_max"),
-		"Maximum write I/O operations burst allowed. Not emitted when unlimited",
+		"Maximum write I/O operations burst allowed. Not emitted when not set",
 		[]string{"domain", "target_device"},
 		nil)
 	libvirtDomainBlockBlkDevIotuneTotalBytesSecMaxLength = prometheus.NewDesc(
