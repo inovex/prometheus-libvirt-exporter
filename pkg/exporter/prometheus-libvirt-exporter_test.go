@@ -113,6 +113,19 @@ func TestUnmarshal(t *testing.T) {
       <readonly/>
       <address type='drive' controller='0' bus='0' target='0' unit='0'/>
     </disk>
+    <disk type='network' device='disk'>
+      <driver name='qemu' type='raw' cache='writeback' discard='unmap'/>
+      <auth username='cinder'>
+        <secret type='ceph' uuid='457eb676-33da-42ec-9a8c-9293d545c337'/>
+      </auth>
+      <source protocol='rbd' name='volumes/volume-5c2b0e37-6a4e-4f0c-8b1e-0d6f3a1c9e52'>
+        <host name='10.110.20.11' port='6789'/>
+        <host name='10.110.20.12' port='6789'/>
+      </source>
+      <target dev='vdc' bus='virtio'/>
+      <serial>5c2b0e37-6a4e-4f0c-8b1e-0d6f3a1c9e52</serial>
+      <address type='pci' domain='0x0000' bus='0x00' slot='0x07' function='0x0'/>
+    </disk>
     <controller type='usb' index='0' model='piix3-uhci'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x2'/>
     </controller>
@@ -170,6 +183,11 @@ func TestUnmarshal(t *testing.T) {
 	assert.Equal(nil, r.OSMetadata.Type.Value, "hvm")
 	assert.Equal(nil, r.OSMetadata.Type.Machine, "pc-i440fx-rhel7.3.0")
 	assert.Equal(nil, r.OSMetadata.Type.Arch, "x86_64")
+	if assert.Len(t, r.Devices.Disks, 4) {
+		assert.Equal(t, "", r.Devices.Disks[0].Source.Name)
+		assert.Equal(t, "rbd", r.Devices.Disks[3].Source.Protocol)
+		assert.Equal(t, "volumes/volume-5c2b0e37-6a4e-4f0c-8b1e-0d6f3a1c9e52", r.Devices.Disks[3].Source.Name)
+	}
 	fmt.Printf("xml name=%#v\n", r.Metadata.NovaInstance.XMLName)
 	fmt.Printf("nova name=%#v\n", r.Metadata.NovaInstance.Name)
 	fmt.Printf("nova =%#v\n", r.Metadata)

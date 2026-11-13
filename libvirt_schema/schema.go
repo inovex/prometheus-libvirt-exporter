@@ -76,6 +76,7 @@ type DiskDriver struct {
 type DiskSource struct {
 	File     string `xml:"file,attr"`
 	Dev      string `xml:"dev,attr"`
+	Name     string `xml:"name,attr"`
 	Protocol string `xml:"protocol,attr"`
 }
 
