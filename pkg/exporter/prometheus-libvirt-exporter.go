@@ -31,6 +31,12 @@ var (
 		[]string{"domain"},
 		nil)
 
+	libvirtVersionsInfoDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "", "versions_info"),
+		"Versions of the running hypervisor and of the libvirt daemon as labels.",
+		[]string{"hypervisor_running", "libvirtd_running"},
+		nil)
+
 	libvirtDomainNumbers = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "", "domains"),
 		"Number of domains",
@@ -527,6 +533,8 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 		prometheus.GaugeValue,
 		1.0)
 
+	CollectVersions(ch, l, logger)
+
 	// get all domains
 	// see https://libvirt.org/html/libvirt-libvirt-domain.html
 	domains, err := DomainsFromLibvirt(l, logger)
@@ -602,6 +610,33 @@ func CollectFromLibvirt(ch chan<- prometheus.Metric, uri string, driver libvirt.
 	wg.Wait()
 
 	return nil
+}
+
+// formatVersion turns a libvirt version number (major * 1,000,000 + minor * 1,000 + release) into "major.minor.release".
+func formatVersion(version uint64) string {
+	return fmt.Sprintf("%d.%d.%d", version/1000000, version/1000%1000, version%1000)
+}
+
+// CollectVersions reports the versions of the running hypervisor and of the libvirt daemon.
+func CollectVersions(ch chan<- prometheus.Metric, l *libvirt.Libvirt, logger *slog.Logger) {
+	hypervisorVersion, err := l.ConnectGetVersion()
+	if err != nil {
+		logger.Error("failed to get the hypervisor version", "msg", err)
+		return
+	}
+
+	libvirtdVersion, err := l.ConnectGetLibVersion()
+	if err != nil {
+		logger.Error("failed to get the libvirt version", "msg", err)
+		return
+	}
+
+	ch <- prometheus.MustNewConstMetric(
+		libvirtVersionsInfoDesc,
+		prometheus.GaugeValue,
+		1.0,
+		formatVersion(hypervisorVersion),
+		formatVersion(libvirtdVersion))
 }
 
 // CollectDomain extracts Prometheus metrics from a libvirt domain.
@@ -1361,6 +1396,7 @@ func CollectStoragePoolInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, poo
 // Describe returns metadata for all Prometheus metrics that may be exported.
 func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- libvirtUpDesc
+	ch <- libvirtVersionsInfoDesc
 	ch <- libvirtDomainNumbers
 
 	ch <- libvirtDomainInfoDesc
