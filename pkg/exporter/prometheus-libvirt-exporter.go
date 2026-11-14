@@ -872,6 +872,9 @@ func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libv
 			if statsIndex != "no_stats" && statsIndex != matches[1] {
 				GenerateAdditionalBlockMetrics(ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime,
 					capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound)
+
+				capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound = false, false, false, false, false
+				capacity, flushRequests, flushTimes, readTime, writeTime = 0, 0, 0, 0, 0
 			}
 			statsIndex = matches[1]
 			switch matches[2] {
