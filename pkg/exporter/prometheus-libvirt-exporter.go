@@ -682,7 +682,7 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 		return nil, false
 	}
 
-	for _, collectFunc := range []collectFunc{CollectDomainBlockDeviceInfo, CollectDomainNetworkInfo, CollectDomainJobInfo, CollectDomainMemoryStatInfo, CollectDomainVCPUInfo} {
+	for _, collectFunc := range []collectFunc{CollectDomainBlockDeviceInfo, CollectDomainNetworkInfo, CollectDomainJobInfo, CollectDomainCompletedJobStats, CollectDomainMemoryStatInfo, CollectDomainVCPUInfo} {
 		if err, hasTimedOut = collectFunc(ch, l, domain, promLabels, logger, timeout); err != nil {
 			logger.Error("failed to collect some domain info", "domain", domain.libvirtDomain.Name, "msg", err)
 			return err, hasTimedOut
@@ -1409,6 +1409,9 @@ func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- libvirtDomainJobFileTotalDesc
 	ch <- libvirtDomainJobFileProcessedDesc
 	ch <- libvirtDomainJobFileRemainingDesc
+
+	//domain completed job (e.g. live migration)
+	describeCompletedJobStats(ch)
 
 	//domain mem stat
 	ch <- libvirtDomainMemoryStatsCurrentBalloonBytesDesc

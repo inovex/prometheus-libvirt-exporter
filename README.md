@@ -156,6 +156,21 @@ This release provides a set of assets for the prometheus-libvirt-exporter. It in
 | libvirt_domain_job_file_total_bytes                   | "domain"                                                                                                                                      | File total of the domain job                                                                                                                                                             |
 | libvirt_domain_job_file_processed_bytes               | "domain"                                                                                                                                      | File processed of the domain job                                                                                                                                                         |
 | libvirt_domain_job_file_remaining_bytes               | "domain"                                                                                                                                      | File remaining of the domain job                                                                                                                                                         |
+| libvirt_domain_completed_job_info | "domain", "operation", "result" | Last completed job (e.g. live migration); `operation` is e.g. `migration_in`/`migration_out`, `result` is `completed`/`failed`/`cancelled` |
+| libvirt_domain_completed_job_downtime_seconds | "domain", "operation", "result" | Final downtime of the last completed migration (VM paused on source until resumed on destination) |
+| libvirt_domain_completed_job_downtime_net_seconds | "domain", "operation", "result" | Same as downtime, without the time needed to transfer statistics between hosts |
+| libvirt_domain_completed_job_time_elapsed_seconds | "domain", "operation", "result" | Total duration of the last completed job |
+| libvirt_domain_completed_job_time_elapsed_net_seconds | "domain", "operation", "result" | Total duration of the last completed job, without the time needed to transfer statistics between hosts |
+| libvirt_domain_completed_job_setup_time_seconds | "domain", "operation", "result" | Migration setup time before memory transfer started |
+| libvirt_domain_completed_job_data_{total,processed,remaining}_bytes | "domain", "operation", "result" | Data (memory + disks) of the last completed job |
+| libvirt_domain_completed_job_memory_{total,processed,remaining}_bytes | "domain", "operation", "result" | Memory of the last completed job |
+| libvirt_domain_completed_job_memory_bytes_per_second | "domain", "operation", "result" | Memory transfer bandwidth |
+| libvirt_domain_completed_job_memory_dirty_rate_pages_per_second | "domain", "operation", "result" | Rate at which the VM dirtied memory pages |
+| libvirt_domain_completed_job_memory_iterations | "domain", "operation", "result" | Number of memory transfer iterations |
+| libvirt_domain_completed_job_memory_postcopy_requests | "domain", "operation", "result" | Page faults served by the source during post-copy |
+| libvirt_domain_completed_job_memory_{constant,normal}_pages, libvirt_domain_completed_job_memory_normal_bytes, libvirt_domain_completed_job_memory_page_size_bytes | "domain", "operation", "result" | Zero / normal pages transferred, page size |
+| libvirt_domain_completed_job_disk_{total,processed,remaining}_bytes, libvirt_domain_completed_job_disk_bytes_per_second | "domain", "operation", "result" | Disk data transferred (block migration) |
+| libvirt_domain_completed_job_auto_converge_throttle_percent | "domain", "operation", "result" | vCPU throttling applied by auto-converge |
 | libvirt_domain_vcpu_current                           | "domain"                                                                                                                                      | Number of current online vCPUs                                                                                                                                                           |
 | libvirt_domain_vcpu_delay_seconds_total               | "domain", "vcpu"                                                                                                                              | Time the vCPU spent waiting in the queue instead of running. Exposed to the VM as steal time                                                                                             |
 | libvirt_domain_vcpu_maximum                           | "domain"                                                                                                                                      | Number of maximum online vCPUs                                                                                                                                                           |
@@ -167,6 +182,27 @@ This release provides a set of assets for the prometheus-libvirt-exporter. It in
 | libvirt_storage_pool_capacity_bytes                   | "storage_pool"                                                                                                                                | Size of the storage pool in logical bytes                                                                                                                                                |
 | libvirt_storage_pool_state                            | "storage_pool"                                                                                                                                | State of the storage pool                                                                                                                                                                |
 | libvirt_storage_pool_timed_out                        | "storage_pool"                                                                                                                                | Whether scraping libvirt's pool metrics has timed out pool                                                                                                                                                                |
+
+### Live migration statistics
+
+The `libvirt_domain_completed_job_*` metrics expose the statistics of the last completed job of each domain
+(`virDomainGetJobStats` with `VIR_DOMAIN_JOB_STATS_COMPLETED`, read with `KEEP_COMPLETED` so they are not discarded).
+After a live migration, the source host sends these statistics to the destination host: they are exposed by the
+exporter of the **destination** host with `operation="migration_in"`, until the next job of the VM (or a restart of libvirt).
+A failed migration is exposed on the source host with `operation="migration_out", result="failed"`.
+
+Example queries:
+
+```promql
+# final downtime of the last live migration of each OpenStack instance
+libvirt_domain_completed_job_downtime_seconds{operation="migration_in"}
+  * on (instance, domain) group_left(instance_name, instance_id, project_name) libvirt_domain_openstack_info
+
+# instances whose last live migration had a downtime above 500ms
+libvirt_domain_completed_job_downtime_seconds{operation="migration_in"} > 0.5
+```
+
+Note that `downtime` is computed with the clocks of both hosts: keep them synchronized (NTP/PTP) for accurate values.
 
 ## Example
 
