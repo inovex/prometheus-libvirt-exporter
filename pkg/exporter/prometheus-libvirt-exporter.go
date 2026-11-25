@@ -262,6 +262,16 @@ var (
 		"Logical size in bytes of the block device	backing image.",
 		[]string{"domain", "target_device"},
 		nil)
+	libvirtDomainBlockAllocationBytesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_stats", "allocation_bytes"),
+		"Offset of the highest written sector of the block device backing image, in bytes.",
+		[]string{"domain", "target_device"},
+		nil)
+	libvirtDomainBlockPhysicalBytesDesc = prometheus.NewDesc(
+		prometheus.BuildFQName(namespace, "domain_block_stats", "physical_bytes"),
+		"Physical size in bytes of the container of the block device backing image.",
+		[]string{"domain", "target_device"},
+		nil)
 
 	//domain block iotune stats
 	libvirtDomainBlockBlkDevIotuneEnabled = prometheus.NewDesc(
@@ -833,8 +843,8 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 	return nil, false
 }
 
-func GenerateAdditionalBlockMetrics(ch chan<- prometheus.Metric, prometheusDiskLabels []string, capacity uint64, flushRequests uint64, flushTimes uint64, readTime uint64, writeTime uint64,
-	capacityFound bool, flushRequestsFound bool, flushTimesFound bool, readTimeFound bool, writeTimeFound bool) {
+func GenerateAdditionalBlockMetrics(ch chan<- prometheus.Metric, prometheusDiskLabels []string, capacity uint64, flushRequests uint64, flushTimes uint64, readTime uint64, writeTime uint64, allocation uint64, physical uint64,
+	capacityFound bool, flushRequestsFound bool, flushTimesFound bool, readTimeFound bool, writeTimeFound bool, allocationFound bool, physicalFound bool) {
 
 	if readTimeFound {
 		ch <- prometheus.MustNewConstMetric(
@@ -876,6 +886,22 @@ func GenerateAdditionalBlockMetrics(ch chan<- prometheus.Metric, prometheusDiskL
 			prometheusDiskLabels...)
 	}
 
+	if allocationFound {
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockAllocationBytesDesc,
+			prometheus.GaugeValue,
+			float64(allocation),
+			prometheusDiskLabels...)
+	}
+
+	if physicalFound {
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockPhysicalBytesDesc,
+			prometheus.GaugeValue,
+			float64(physical),
+			prometheusDiskLabels...)
+	}
+
 }
 
 func connectGetAllDomainStats(l *libvirt.Libvirt, domain domainMeta, flag libvirt.DomainStatsTypes, chRes chan<- DomainStatsRecord) {
@@ -903,17 +929,17 @@ func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libv
 
 	domainBlockStats := data[0]
 	statsIndex := "no_stats"
-	var capacity, flushRequests, flushTimes, readTime, writeTime uint64
-	var capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound bool
+	var capacity, flushRequests, flushTimes, readTime, writeTime, allocation, physical uint64
+	var capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound, allocationFound, physicalFound bool
 	var prometheusDiskLabels []string
 	for _, param := range domainBlockStats.Params {
 		if matches := additionalBlockStatName.FindStringSubmatch(param.Field); matches != nil {
 			if statsIndex != "no_stats" && statsIndex != matches[1] {
-				GenerateAdditionalBlockMetrics(ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime,
-					capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound)
+				GenerateAdditionalBlockMetrics(ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime, allocation, physical,
+					capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound, allocationFound, physicalFound)
 
-				capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound = false, false, false, false, false
-				capacity, flushRequests, flushTimes, readTime, writeTime = 0, 0, 0, 0, 0
+				capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound, allocationFound, physicalFound = false, false, false, false, false, false, false
+				capacity, flushRequests, flushTimes, readTime, writeTime, allocation, physical = 0, 0, 0, 0, 0, 0, 0
 			}
 			statsIndex = matches[1]
 			switch matches[2] {
@@ -929,13 +955,17 @@ func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libv
 				flushTimes, flushTimesFound = param.Value.I.(uint64), true
 			case "capacity":
 				capacity, capacityFound = param.Value.I.(uint64), true
+			case "allocation":
+				allocation, allocationFound = param.Value.I.(uint64), true
+			case "physical":
+				physical, physicalFound = param.Value.I.(uint64), true
 			}
 		}
 	}
 	if statsIndex != "no_stats" {
 		GenerateAdditionalBlockMetrics(
-			ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime,
-			capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound,
+			ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime, allocation, physical,
+			capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound, allocationFound, physicalFound,
 		)
 	}
 
@@ -1726,6 +1756,8 @@ func (e *LibvirtExporter) Describe(ch chan<- *prometheus.Desc) {
 	ch <- libvirtDomainBlockFlushReqDesc
 	ch <- libvirtDomainBlockFlushTotalTimeSecondsDesc
 	ch <- libvirtDomainBlockCapacityBytesDesc
+	ch <- libvirtDomainBlockAllocationBytesDesc
+	ch <- libvirtDomainBlockPhysicalBytesDesc
 	ch <- libvirtDomainBlockBlkDevIotuneEnabled
 	ch <- libvirtDomainBlockBlkDevIotuneTotalBytesSec
 	ch <- libvirtDomainBlockBlkDevIotuneReadBytesSec
