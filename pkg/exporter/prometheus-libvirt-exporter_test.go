@@ -20,6 +20,15 @@ https://www.oschina.net/question/203177_2213070
 
 **/
 
+func TestFormatVersion(t *testing.T) {
+	assert.Equal(t, "10.0.0", formatVersion(10000000))
+	assert.Equal(t, "8.2.2", formatVersion(8002002))
+	assert.Equal(t, "0.9.13", formatVersion(9013))
+	assert.Equal(t, "1.100.5", formatVersion(1100005))
+	assert.Equal(t, "100.2.3", formatVersion(100002003))
+	assert.Equal(t, "123.456.789", formatVersion(123456789))
+}
+
 func TestUnmarshal(t *testing.T) {
 	var (
 		str = `
