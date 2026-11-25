@@ -209,7 +209,7 @@ var (
 	libvirtDomainBlockStatsInfo = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_stats", "info"),
 		"Metadata information on block devices.",
-		[]string{"domain", "disk_type", "target_bus", "driver_name", "driver_type", "driver_cache", "driver_discard", "source_file", "source_protocol", "target_device", "serial"},
+		[]string{"domain", "disk_type", "target_bus", "driver_name", "driver_type", "driver_cache", "driver_discard", "source_file", "source_dev", "source_protocol", "target_device", "serial"},
 		nil)
 	libvirtDomainBlockStatsRdBytesDesc = prometheus.NewDesc(
 		prometheus.BuildFQName(namespace, "domain_block_stats", "read_bytes_total"),
@@ -854,7 +854,7 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 			prometheus.CounterValue,
 			float64(rWrReq),
 			promDiskLabels...)
-		promDiskInfoLabels := append(promLabels, disk.Type, disk.Target.Bus, disk.Driver.Name, disk.Driver.Type, disk.Driver.Cache, disk.Driver.Discard, disk.Source.File, disk.Source.Protocol, disk.Target.Device, disk.Serial)
+		promDiskInfoLabels := append(promLabels, disk.Type, disk.Target.Bus, disk.Driver.Name, disk.Driver.Type, disk.Driver.Cache, disk.Driver.Discard, disk.Source.File, disk.Source.Dev, disk.Source.Protocol, disk.Target.Device, disk.Serial)
 		ch <- prometheus.MustNewConstMetric(
 			libvirtDomainBlockStatsInfo,
 			prometheus.GaugeValue,
