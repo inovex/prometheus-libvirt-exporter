@@ -794,32 +794,49 @@ func CollectDomain(ch chan<- prometheus.Metric, l *libvirt.Libvirt, domain domai
 	return nil, false
 }
 
-func GenerateAdditionalBlockMetrics(ch chan<- prometheus.Metric, prometheusDiskLabels []string, capacity uint64, flushRequests uint64, flushTimes uint64, readTime uint64, writeTime uint64) {
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainBlockRdTotalTimeSecondsDesc,
-		prometheus.CounterValue,
-		float64(readTime)/1e9,
-		prometheusDiskLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainBlockWrTotalTimesDesc,
-		prometheus.CounterValue,
-		float64(writeTime)/1e9,
-		prometheusDiskLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainBlockFlushReqDesc,
-		prometheus.CounterValue,
-		float64(flushRequests),
-		prometheusDiskLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainBlockFlushTotalTimeSecondsDesc,
-		prometheus.CounterValue,
-		float64(flushTimes)/1e9,
-		prometheusDiskLabels...)
-	ch <- prometheus.MustNewConstMetric(
-		libvirtDomainBlockCapacityBytesDesc,
-		prometheus.GaugeValue,
-		float64(capacity),
-		prometheusDiskLabels...)
+func GenerateAdditionalBlockMetrics(ch chan<- prometheus.Metric, prometheusDiskLabels []string, capacity uint64, flushRequests uint64, flushTimes uint64, readTime uint64, writeTime uint64,
+	capacityFound bool, flushRequestsFound bool, flushTimesFound bool, readTimeFound bool, writeTimeFound bool) {
+
+	if readTimeFound {
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockRdTotalTimeSecondsDesc,
+			prometheus.CounterValue,
+			float64(readTime)/1e9,
+			prometheusDiskLabels...)
+	}
+
+	if writeTimeFound {
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockWrTotalTimesDesc,
+			prometheus.CounterValue,
+			float64(writeTime)/1e9,
+			prometheusDiskLabels...)
+	}
+
+	if flushRequestsFound {
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockFlushReqDesc,
+			prometheus.CounterValue,
+			float64(flushRequests),
+			prometheusDiskLabels...)
+	}
+
+	if flushTimesFound {
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockFlushTotalTimeSecondsDesc,
+			prometheus.CounterValue,
+			float64(flushTimes)/1e9,
+			prometheusDiskLabels...)
+	}
+
+	if capacityFound {
+		ch <- prometheus.MustNewConstMetric(
+			libvirtDomainBlockCapacityBytesDesc,
+			prometheus.GaugeValue,
+			float64(capacity),
+			prometheusDiskLabels...)
+	}
+
 }
 
 func connectGetAllDomainStats(l *libvirt.Libvirt, domain domainMeta, flag libvirt.DomainStatsTypes, chRes chan<- DomainStatsRecord) {
@@ -848,31 +865,39 @@ func CollectAdditionalDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libv
 	domainBlockStats := data[0]
 	statsIndex := "no_stats"
 	var capacity, flushRequests, flushTimes, readTime, writeTime uint64
+	var capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound bool
 	var prometheusDiskLabels []string
 	for _, param := range domainBlockStats.Params {
 		if matches := additionalBlockStatName.FindStringSubmatch(param.Field); matches != nil {
 			if statsIndex != "no_stats" && statsIndex != matches[1] {
-				GenerateAdditionalBlockMetrics(ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime)
+				GenerateAdditionalBlockMetrics(ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime,
+					capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound)
+
+				capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound = false, false, false, false, false
+				capacity, flushRequests, flushTimes, readTime, writeTime = 0, 0, 0, 0, 0
 			}
 			statsIndex = matches[1]
 			switch matches[2] {
 			case "name":
 				prometheusDiskLabels = append(promLabels, param.Value.I.(string))
 			case "rd.times":
-				readTime = param.Value.I.(uint64)
+				readTime, readTimeFound = param.Value.I.(uint64), true
 			case "wr.times":
-				writeTime = param.Value.I.(uint64)
+				writeTime, writeTimeFound = param.Value.I.(uint64), true
 			case "fl.reqs":
-				flushRequests = param.Value.I.(uint64)
+				flushRequests, flushRequestsFound = param.Value.I.(uint64), true
 			case "fl.times":
-				flushTimes = param.Value.I.(uint64)
+				flushTimes, flushTimesFound = param.Value.I.(uint64), true
 			case "capacity":
-				capacity = param.Value.I.(uint64)
+				capacity, capacityFound = param.Value.I.(uint64), true
 			}
 		}
 	}
 	if statsIndex != "no_stats" {
-		GenerateAdditionalBlockMetrics(ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime)
+		GenerateAdditionalBlockMetrics(
+			ch, prometheusDiskLabels, capacity, flushRequests, flushTimes, readTime, writeTime,
+			capacityFound, flushRequestsFound, flushTimesFound, readTimeFound, writeTimeFound,
+		)
 	}
 
 	return
@@ -905,6 +930,7 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 			continue
 		}
 		var rRdReq, rRdBytes, rWrReq, rWrBytes uint64
+		var rRdReqFound, rRdBytesFound, rWrReqFound, rWrBytesFound bool
 
 		bdev_name := bdevNameRegex
 		bdev_metrics := bdevMetricsRegex
@@ -924,38 +950,49 @@ func CollectDomainBlockDeviceInfo(ch chan<- prometheus.Metric, l *libvirt.Libvir
 				metric := bdev_metric.FindStringSubmatch(param.Field)
 				switch metric[1] {
 				case "rd.bytes":
-					rRdBytes = param.Value.I.(uint64)
+					rRdBytes, rRdBytesFound = param.Value.I.(uint64), true
 				case "rd.reqs":
-					rRdReq = param.Value.I.(uint64)
+					rRdReq, rRdReqFound = param.Value.I.(uint64), true
 				case "wr.bytes":
-					rWrBytes = param.Value.I.(uint64)
+					rWrBytes, rWrBytesFound = param.Value.I.(uint64), true
 				case "wr.reqs":
-					rWrReq = param.Value.I.(uint64)
+					rWrReq, rWrReqFound = param.Value.I.(uint64), true
 				}
 			}
 		}
 
 		promDiskLabels := append(promLabels, disk.Target.Device)
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainBlockStatsRdBytesDesc,
-			prometheus.CounterValue,
-			float64(rRdBytes),
-			promDiskLabels...)
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainBlockStatsRdReqDesc,
-			prometheus.CounterValue,
-			float64(rRdReq),
-			promDiskLabels...)
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainBlockStatsWrBytesDesc,
-			prometheus.CounterValue,
-			float64(rWrBytes),
-			promDiskLabels...)
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainBlockStatsWrReqDesc,
-			prometheus.CounterValue,
-			float64(rWrReq),
-			promDiskLabels...)
+		if rRdBytesFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainBlockStatsRdBytesDesc,
+				prometheus.CounterValue,
+				float64(rRdBytes),
+				promDiskLabels...)
+		}
+
+		if rRdReqFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainBlockStatsRdReqDesc,
+				prometheus.CounterValue,
+				float64(rRdReq),
+				promDiskLabels...)
+		}
+
+		if rWrBytesFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainBlockStatsWrBytesDesc,
+				prometheus.CounterValue,
+				float64(rWrBytes),
+				promDiskLabels...)
+		}
+
+		if rWrReqFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainBlockStatsWrReqDesc,
+				prometheus.CounterValue,
+				float64(rWrReq),
+				promDiskLabels...)
+		}
 
 		blkIotuneState := 0
 		disabledIotuneRef := libvirt_schema.DiskIotune{}
@@ -1139,6 +1176,7 @@ func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, d
 			continue
 		}
 		var rRxBytes, rRxPackets, rRxErrs, rRxDrop, rTxBytes, rTxPackets, rTxErrs, rTxDrop uint64
+		var rRxBytesFound, rRxPacketsFound, rRxErrsFound, rRxDropFound, rTxBytesFound, rTxPacketsFound, rTxErrsFound, rTxDropFound bool
 
 		int_name := intNameRegex
 		int_metrics := intMetricsRegex
@@ -1158,73 +1196,90 @@ func CollectDomainNetworkInfo(ch chan<- prometheus.Metric, l *libvirt.Libvirt, d
 				metric := int_metric.FindStringSubmatch(param.Field)
 				switch metric[1] {
 				case "rx.bytes":
-					rRxBytes = param.Value.I.(uint64)
+					rRxBytes, rRxBytesFound = param.Value.I.(uint64), true
 				case "rx.pkts":
-					rRxPackets = param.Value.I.(uint64)
+					rRxPackets, rRxPacketsFound = param.Value.I.(uint64), true
 				case "rx.errs":
-					rRxErrs = param.Value.I.(uint64)
+					rRxErrs, rRxErrsFound = param.Value.I.(uint64), true
 				case "rx.drop":
-					rRxDrop = param.Value.I.(uint64)
+					rRxDrop, rRxDropFound = param.Value.I.(uint64), true
 				case "tx.bytes":
-					rTxBytes = param.Value.I.(uint64)
+					rTxBytes, rTxBytesFound = param.Value.I.(uint64), true
 				case "tx.pkts":
-					rTxPackets = param.Value.I.(uint64)
+					rTxPackets, rTxPacketsFound = param.Value.I.(uint64), true
 				case "tx.errs":
-					rTxErrs = param.Value.I.(uint64)
+					rTxErrs, rTxErrsFound = param.Value.I.(uint64), true
 				case "tx.drop":
-					rTxDrop = param.Value.I.(uint64)
+					rTxDrop, rTxDropFound = param.Value.I.(uint64), true
 				}
 			}
 		}
 
 		promInterfaceLabels := append(promLabels, iface.Target.Device)
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainInterfaceRxBytesDesc,
-			prometheus.CounterValue,
-			float64(rRxBytes),
-			promInterfaceLabels...)
 
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainInterfaceRxPacketsDesc,
-			prometheus.CounterValue,
-			float64(rRxPackets),
-			promInterfaceLabels...)
+		if rRxBytesFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainInterfaceRxBytesDesc,
+				prometheus.CounterValue,
+				float64(rRxBytes),
+				promInterfaceLabels...)
+		}
 
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainInterfaceRxErrsDesc,
-			prometheus.CounterValue,
-			float64(rRxErrs),
-			promInterfaceLabels...)
+		if rRxPacketsFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainInterfaceRxPacketsDesc,
+				prometheus.CounterValue,
+				float64(rRxPackets),
+				promInterfaceLabels...)
+		}
 
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainInterfaceRxDropDesc,
-			prometheus.CounterValue,
-			float64(rRxDrop),
-			promInterfaceLabels...)
+		if rRxErrsFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainInterfaceRxErrsDesc,
+				prometheus.CounterValue,
+				float64(rRxErrs),
+				promInterfaceLabels...)
+		}
 
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainInterfaceTxBytesDesc,
-			prometheus.CounterValue,
-			float64(rTxBytes),
-			promInterfaceLabels...)
+		if rRxDropFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainInterfaceRxDropDesc,
+				prometheus.CounterValue,
+				float64(rRxDrop),
+				promInterfaceLabels...)
+		}
 
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainInterfaceTxPacketsDesc,
-			prometheus.CounterValue,
-			float64(rTxPackets),
-			promInterfaceLabels...)
+		if rTxBytesFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainInterfaceTxBytesDesc,
+				prometheus.CounterValue,
+				float64(rTxBytes),
+				promInterfaceLabels...)
+		}
 
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainInterfaceTxErrsDesc,
-			prometheus.CounterValue,
-			float64(rTxErrs),
-			promInterfaceLabels...)
+		if rTxPacketsFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainInterfaceTxPacketsDesc,
+				prometheus.CounterValue,
+				float64(rTxPackets),
+				promInterfaceLabels...)
+		}
 
-		ch <- prometheus.MustNewConstMetric(
-			libvirtDomainInterfaceTxDropDesc,
-			prometheus.CounterValue,
-			float64(rTxDrop),
-			promInterfaceLabels...)
+		if rTxErrsFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainInterfaceTxErrsDesc,
+				prometheus.CounterValue,
+				float64(rTxErrs),
+				promInterfaceLabels...)
+		}
+
+		if rTxDropFound {
+			ch <- prometheus.MustNewConstMetric(
+				libvirtDomainInterfaceTxDropDesc,
+				prometheus.CounterValue,
+				float64(rTxDrop),
+				promInterfaceLabels...)
+		}
 
 		promInterfaceInfoLabels := append(promLabels, iface.Type, iface.Source.Bridge, iface.Target.Device, iface.MAC.Address, iface.Model.Type, iface.MTU.Size)
 		ch <- prometheus.MustNewConstMetric(
